@@ -1,0 +1,887 @@
+<template>
+  <div class="chem-root" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
+    <div class="home-view" if="{{!isEditing && !isViewingResults}}">
+      <text class="home-title">化学工具箱</text>
+      <div class="home-input" @click="openEditor">
+        <text class="home-input-text" if="{{savedText1}}">{{savedText1}}</text>
+        <text static class="home-placeholder" if="{{!savedText1}}">点击输入</text>
+      </div>
+      <div class="home-input second-input" @click="openSecondEditor">
+        <text class="home-input-text" if="{{savedText2}}">{{savedText2}}</text>
+        <text static class="home-placeholder" if="{{!savedText2}}">点击输入</text>
+      </div>
+      <div class="search-button" @click="searchEquations">
+        <text class="search-button-text">搜索</text>
+      </div>
+      <text class="home-hint" if="{{homeMessage}}">{{homeMessage}}</text>
+    </div>
+
+    <div class="results-view" if="{{isViewingResults}}">
+      <div class="results-topbar">
+        <text class="results-back" @click="backToHome">返回</text>
+        <text class="results-title">查询结果</text>
+      </div>
+      <text class="results-query">{{searchFormula1}} + {{searchFormula2}}</text>
+      <text class="results-subtitle" if="{{searchResults.length}}">同时包含这两个分子式的方程式</text>
+      <text class="results-empty" if="{{!searchResults.length}}">没有找到同时包含这两个分子式的方程式</text>
+      <scroll class="results-scroll" scroll-y="{{true}}" if="{{searchResults.length}}">
+        <div class="results-list">
+          <div class="result-card" for="{{item in searchResults}}">
+            <text class="result-equation">{{item.equation}}</text>
+            <text class="result-meta">类型：{{item.type}}</text>
+            <text class="result-meta">条件：{{item.conditions}}</text>
+            <text class="result-meta">现象：{{item.phenomenon}}</text>
+          </div>
+        </div>
+      </scroll>
+    </div>
+
+    <div class="editor-view" if="{{isEditing}}">
+      <div class="editor-input" @click="showKeyboard">
+        <scroll id="editorScroll" scroll-x="{{true}}" class="editor-scroll">
+          <div class="editor-content">
+            <text class="editor-text" if="{{draftText}}">{{draftText}}</text>
+            <text static class="editor-placeholder" if="{{!draftText}}">请输入内容</text>
+            <text class="cursor" if="{{!hideKeyboard}}"></text>
+          </div>
+        </scroll>
+      </div>
+      <text class="enter-button" if="{{!hideKeyboard}}" @click="saveAndCloseEditor">回车</text>
+    </div>
+
+    <div class="keyboard-page" if="{{isEditing && !hideKeyboard}}">
+      <div class="keyboard-bg">
+        <progress percent="{{30 + percent66}}" type="arc" class="arc-progress" style="margin-left: {{(screenWidth - 192) / 2}}px;"></progress>
+        <scroll id="keyboard66" scroll-x="{{true}}" onscroll="handelScroll" style="padding-left: {{(screenWidth - 192) / 2}}px;padding-right: {{(screenWidth - 192) / 2}}px;">
+          <div if="{{!numFlag}}" style="left: 3px; flex-direction: column;">
+            <div static style="margin-left: 0px;margin-top: 0px;height: 60px;">
+              <text class="calbtn66" for="{{item in keys['full'][0]}}" @click="onSelect(item)">{{item}}</text>
+            </div>
+            <div static style="margin-left: 32px;margin-top: -5px;height: 60px;">
+              <text class="calbtn66" for="{{item in keys['full'][1]}}" @click="onSelect(item)">{{item}}</text>
+            </div>
+            <div static style="margin-left: 64px;margin-top: -5px;height: 60px;">
+              <text class="calbtn66" for="{{item in keys['full'][2]}}" @click="onSelect(item)">{{item}}</text>
+              <img static src="/components/InputMethod/assets/arc/space.png" style="width: 60px;height: 60px;" @click="onBtnClick('space')" />
+            </div>
+          </div>
+          <div else style="left: 3px; flex-direction: column;">
+            <div static style="margin-left: 0px;margin-top: 0px;height: 60px;">
+              <text class="calbtn66" for="{{item in keys['sign'][0]}}" @click="onSelect(item)">{{item}}</text>
+            </div>
+            <div static style="margin-left: 32px;margin-top: -5px;height: 60px;">
+              <text class="calbtn66" for="{{item in keys['sign'][1]}}" @click="onSelect(item)">{{item}}</text>
+            </div>
+            <div static style="margin-left: 64px;margin-top: -5px;height: 60px;">
+              <text class="calbtn66" for="{{item in keys['sign'][2]}}" @click="onSelect(item)">{{item}}</text>
+            </div>
+          </div>
+        </scroll>
+      </div>
+
+      <div static class="arc-topbar" style="left: {{(screenWidth - 192) / 2}}px;">
+        <img static class="arc-search" src="/components/InputMethod/assets/arc/search.png" />
+        <scroll id="cvalWaiting" scroll-x="{{true}}" class="candidate-scroll">
+          <div style="position: absolute;left: 0px;top: 0px;height: 42px;padding-right:20px">
+            <text class="calbtn02" style="padding-right:10px" @click="pushCval">{{cval}}</text>
+            <text for="{{cvalList}}" show="{{resultList.length > $idx}}" class="calbtn02" style="padding-right:10px" @click="onRsSelect(resultList[$idx])">{{resultList[$idx]}}</text>
+          </div>
+        </scroll>
+        <img show="{{resultList.length > 0}}" class="candidate-more" src="/components/InputMethod/assets/arc/down2.png" @click="onBtnClick('down')" />
+        <div class="icon-btn icon-lang" @click="onBtnClick('lang')" show="{{downFlag === '' && !numFlag && lang === 'cn'}}">
+          <img src="/components/InputMethod/assets/arc/cn.png" class="icon-img" />
+        </div>
+        <div class="icon-btn icon-lang" @click="onBtnClick('lang')" show="{{downFlag === '' && !numFlag && lang === 'en'}}">
+          <img src="/components/InputMethod/assets/arc/en.png" class="icon-img" />
+        </div>
+        <div class="icon-btn icon-lang" @click="onBtnClick('switchCn')" show="{{numFlag && lang === 'cn'}}">
+          <img src="/components/InputMethod/assets/arc/back2.png" class="icon-img" />
+        </div>
+        <div class="icon-btn icon-num" @click="onBtnClick('switchNum')" show="{{downFlag === '' && !numFlag && lang === 'cn'}}">
+          <img src="/components/InputMethod/assets/arc/123.png" class="icon-img" />
+        </div>
+        <div class="icon-btn icon-num" @click="onBtnClick('switchLow')" show="{{downFlag === '' && upperFlag && lang === 'en'}}">
+          <img src="/components/InputMethod/assets/arc/bigA.png" class="icon-img" />
+        </div>
+        <div class="icon-btn icon-num" @click="onBtnClick('switchUpper')" show="{{downFlag === '' && !upperFlag && lang === 'en'}}">
+          <img src="/components/InputMethod/assets/arc/a.png" class="icon-img" />
+        </div>
+        <div class="icon-btn icon-del" @click="onBtnClick('D')">
+          <img src="/components/InputMethod/assets/arc/del.png" class="icon-img" />
+        </div>
+      </div>
+
+      <div class="candidate-panel" if="{{downFlag === 'down'}}">
+        <div style="position: absolute;left: {{(screenWidth - 192) / 2}}px;width: 192px;height: 263px;">
+          <list static class="list66">
+            <list-item type="waitingRows66" class="item66" for="{{itemArray in resultList2}}">
+              <div class="item column center" for="{{item in itemArray}}">
+                <input class="calbtn0" type="button" value="{{item}}" @click="onRsSelect(item)" />
+              </div>
+            </list-item>
+          </list>
+          <img static class="candidate-up" src="/components/InputMethod/assets/arc/up2.png" @click="onBtnClick('down')" />
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import storage from "@system.storage"
+import vibrator from "@system.vibrator"
+import device from "@system.device"
+import { SimpleInputMethod } from "../../components/InputMethod/assets/dicUtil.js"
+import { formatFormula, searchReactionsByPair } from "../../services/chemSearch.js"
+
+const STORAGE_KEY_1 = "CHEMISTRY_TOOLBOX_HOME_TEXT_1"
+const STORAGE_KEY_2 = "CHEMISTRY_TOOLBOX_HOME_TEXT_2"
+const EDGE_THRESHOLD = 28
+const EXIT_SWIPE_DISTANCE = 58
+const EXIT_SWIPE_MAX_Y_DRIFT = 70
+
+function getHanzi(word, cb) {
+  const hanzi = SimpleInputMethod.getHanzi(word)
+  cb(hanzi && hanzi[0] ? hanzi[0] : [])
+}
+
+export default {
+  private: {
+    savedText1: "",
+    savedText2: "",
+    draftText: "",
+    activeInput: 1,
+    isEditing: false,
+    isViewingResults: false,
+    hideKeyboard: true,
+    homeMessage: "",
+    searchFormula1: "",
+    searchFormula2: "",
+    searchResults: [],
+    cval: "",
+    resultList: [],
+    resultList2: [],
+    downFlag: "",
+    lang: "cn",
+    numFlag: false,
+    upperFlag: false,
+    percent66: 0,
+    screenWidth: 212,
+    cvalList: [0, 1, 2],
+    keys: {
+      full: [
+        ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+        ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+        ["Z", "X", "C", "V", "B", "N", "M"]
+      ],
+      sign: [
+        ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
+        ["~", "!", "@", "#", "%", "“", "”", "*", "?", "/"],
+        ["(", ")", "-", "_", ":", ";", "，", "。", "."]
+      ]
+    }
+  },
+
+  onInit() {
+    this.touchStartX = null
+    this.touchStartY = null
+    this.loadSavedText()
+    device.getInfo({
+      success: (data) => {
+        if (data && data.screenWidth) {
+          this.screenWidth = data.screenWidth
+        }
+      }
+    })
+  },
+
+  loadSavedText() {
+    storage.get({
+      key: STORAGE_KEY_1,
+      success: (data) => {
+        this.savedText1 = data || ""
+      },
+      fail: () => {
+        this.savedText1 = ""
+      }
+    })
+    storage.get({
+      key: STORAGE_KEY_2,
+      success: (data) => {
+        this.savedText2 = data || ""
+      },
+      fail: () => {
+        this.savedText2 = ""
+      }
+    })
+  },
+
+  openEditor() {
+    this.homeMessage = ""
+    this.activeInput = 1
+    this.draftText = this.savedText1 || ""
+    this.isEditing = true
+    this.hideKeyboard = false
+    this.scrollEditorToEnd()
+  },
+
+  openSecondEditor() {
+    this.homeMessage = ""
+    this.activeInput = 2
+    this.draftText = this.savedText2 || ""
+    this.isEditing = true
+    this.hideKeyboard = false
+    this.scrollEditorToEnd()
+  },
+
+  showKeyboard() {
+    this.hideKeyboard = false
+    this.scrollEditorToEnd()
+  },
+
+  hideEditorKeyboard() {
+    this.hideKeyboard = true
+    this.downFlag = ""
+    this.scrollEditorToEnd()
+  },
+
+  addText(txt) {
+    this.draftText += txt
+    this.scrollEditorToEnd()
+  },
+
+  onSelect(key) {
+    this.onVibrate()
+    if (this.lang === "cn" && !this.numFlag) {
+      this.cval += key.toLowerCase()
+      this.resetResultList()
+      return
+    }
+    if (this.lang === "en" && !this.numFlag) {
+      this.addText(this.upperFlag ? key.toUpperCase() : key.toLowerCase())
+      return
+    }
+    this.addText(key)
+  },
+
+  onBtnClick(sign) {
+    this.onVibrate()
+    switch (sign) {
+      case "lang":
+        this.lang = this.lang === "cn" ? "en" : "cn"
+        this.clearComposition()
+        break
+      case "D":
+        if (this.cval) {
+          this.cval = this.cval.slice(0, -1)
+          this.resetResultList()
+        } else if (this.draftText) {
+          this.draftText = this.draftText.slice(0, -1)
+          this.scrollEditorToEnd()
+        }
+        break
+      case "space":
+        this.pushCval()
+        this.addText(" ")
+        break
+      case "down":
+        this.downFlag = this.downFlag === "down" ? "" : "down"
+        break
+      case "switchNum":
+        this.numFlag = true
+        this.clearComposition()
+        break
+      case "switchCn":
+        this.numFlag = false
+        break
+      case "switchUpper":
+        this.upperFlag = true
+        break
+      case "switchLow":
+        this.upperFlag = false
+        break
+      default:
+        break
+    }
+  },
+
+  onRsSelect(txt) {
+    this.onVibrate()
+    this.addText(txt)
+    this.clearComposition()
+  },
+
+  pushCval() {
+    if (this.cval) {
+      this.addText(this.cval)
+      this.clearComposition()
+    }
+  },
+
+  clearComposition() {
+    this.cval = ""
+    this.resultList = []
+    this.resultList2 = []
+    this.downFlag = ""
+  },
+
+  resetResultList() {
+    if (this.$element("cvalWaiting")) {
+      this.$element("cvalWaiting").scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "smooth"
+      })
+    }
+    if (!this.cval || this.lang !== "cn") {
+      this.resultList = []
+      this.resultList2 = []
+      return
+    }
+    getHanzi(this.cval, (data) => {
+      this.resultList = data || []
+      this.setResultListAll()
+    })
+  },
+
+  setResultListAll() {
+    const rows = []
+    let row = []
+    for (let i = 0; i < this.resultList.length; i += 1) {
+      row.push(this.resultList[i])
+      if (row.length === 3) {
+        rows.push(row)
+        row = []
+      }
+    }
+    if (row.length > 0) {
+      rows.push(row)
+    }
+    this.resultList2 = rows
+  },
+
+  handelScroll(event) {
+    const value = parseInt((event.scrollX / 633) * 100)
+    this.percent66 = value <= 100 ? value : 100
+  },
+
+  handleTouchStart(eve) {
+    if (!this.isEditing) {
+      return
+    }
+    this.touchStartX = this.getPoint(eve, "x")
+    this.touchStartY = this.getPoint(eve, "y")
+  },
+
+  handleTouchEnd(eve) {
+    if (!this.isEditing) {
+      return
+    }
+
+    const endX = this.getPoint(eve, "x")
+    const endY = this.getPoint(eve, "y")
+    if (this.touchStartX === null || endX === null) {
+      return
+    }
+
+    const deltaX = endX - this.touchStartX
+    const deltaY = Math.abs((endY || 0) - (this.touchStartY || 0))
+    if (this.touchStartX <= EDGE_THRESHOLD && deltaX >= EXIT_SWIPE_DISTANCE && deltaY <= EXIT_SWIPE_MAX_Y_DRIFT && this.draftText) {
+      this.saveAndCloseEditor()
+    }
+
+    this.touchStartX = null
+    this.touchStartY = null
+  },
+
+  saveAndCloseEditor() {
+    this.pushCval()
+    if (this.activeInput === 2) {
+      this.savedText2 = this.draftText
+    } else {
+      this.savedText1 = this.draftText
+    }
+    this.hideKeyboard = true
+    this.isEditing = false
+    storage.set({
+      key: this.activeInput === 2 ? STORAGE_KEY_2 : STORAGE_KEY_1,
+      value: this.draftText
+    })
+  },
+
+  searchEquations() {
+    const formula1 = formatFormula(this.savedText1)
+    const formula2 = formatFormula(this.savedText2)
+
+    if (!formula1 || !formula2) {
+      this.homeMessage = "请先输入两个分子式"
+      return
+    }
+
+    this.homeMessage = ""
+    this.searchFormula1 = formula1
+    this.searchFormula2 = formula2
+    this.searchResults = searchReactionsByPair(formula1, formula2)
+    this.isViewingResults = true
+  },
+
+  backToHome() {
+    this.isViewingResults = false
+  },
+
+  getPoint(eve, axis) {
+    if (!eve) {
+      return null
+    }
+    const point = (eve.touches && eve.touches[0]) || (eve.changedTouches && eve.changedTouches[0]) || eve
+    const candidates = axis === "x"
+      ? ["globalX", "screenX", "clientX", "pageX", "x"]
+      : ["globalY", "screenY", "clientY", "pageY", "y"]
+    for (let i = 0; i < candidates.length; i += 1) {
+      const key = candidates[i]
+      if (typeof point[key] === "number") {
+        return point[key]
+      }
+    }
+    return null
+  },
+
+  scrollEditorToEnd() {
+    setTimeout(() => {
+      if (this.isEditing && this.$element("editorScroll")) {
+        this.$element("editorScroll").scrollTo({
+          top: 0,
+          left: 9999,
+          behavior: "smooth"
+        })
+      }
+    }, 0)
+  },
+
+  onVibrate() {
+    vibrator.vibrate({ mode: "short" })
+  }
+}
+</script>
+
+<style>
+.chem-root {
+  width: 100%;
+  height: 100%;
+  background-color: #f4f7f5;
+}
+
+.home-view {
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+.home-title {
+  width: 100%;
+  font-size: 32px;
+  line-height: 42px;
+  font-weight: bold;
+  color: #16231f;
+  text-align: center;
+}
+
+.home-input {
+  width: 100%;
+  height: 54px;
+  margin-top: 28px;
+  padding-left: 18px;
+  padding-right: 18px;
+  border-radius: 27px;
+  background-color: #e3eee9;
+  border: 2px solid #c7d9d1;
+  align-items: center;
+  justify-content: center;
+}
+
+.second-input {
+  margin-top: 14px;
+}
+
+.search-button {
+  width: 128px;
+  height: 46px;
+  margin-top: 22px;
+  border-radius: 23px;
+  background-color: #1e9b6c;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-button-text {
+  color: #ffffff;
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: bold;
+}
+
+.home-input-text {
+  width: 100%;
+  font-size: 22px;
+  line-height: 30px;
+  color: #182b25;
+  text-align: center;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+
+.home-placeholder {
+  font-size: 22px;
+  line-height: 30px;
+  color: #75847e;
+  text-align: center;
+}
+
+.home-hint {
+  margin-top: 12px;
+  font-size: 18px;
+  line-height: 24px;
+  color: #8d4f3a;
+  text-align: center;
+}
+
+.results-view {
+  width: 100%;
+  height: 100%;
+  padding: 14px 12px 16px;
+  background-color: #f4f7f5;
+  flex-direction: column;
+}
+
+.results-topbar {
+  width: 100%;
+  margin-top: 10px;
+  height: 62px;
+  flex-direction: column;
+  align-items: center;
+}
+
+.results-back {
+  width: 54px;
+  font-size: 20px;
+  line-height: 24px;
+  color: #1e9b6c;
+  text-align: center;
+}
+
+.results-title {
+  margin-top: 6px;
+  font-size: 28px;
+  line-height: 34px;
+  color: #16231f;
+  text-align: center;
+  font-weight: bold;
+}
+
+.results-query {
+  margin-top: 14px;
+  font-size: 22px;
+  line-height: 28px;
+  color: #244238;
+  text-align: center;
+  font-weight: bold;
+}
+
+.results-subtitle {
+  margin-top: 8px;
+  font-size: 18px;
+  line-height: 24px;
+  color: #6a7b74;
+  text-align: center;
+}
+
+.results-empty {
+  margin-top: 28px;
+  font-size: 20px;
+  line-height: 28px;
+  color: #6a7b74;
+  text-align: center;
+}
+
+.results-scroll {
+  width: 100%;
+  flex: 1;
+  margin-top: 14px;
+}
+
+.results-list {
+  width: 100%;
+  flex-direction: column;
+  padding-bottom: 24px;
+}
+
+.result-card {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background-color: #e3eee9;
+  border: 2px solid #c7d9d1;
+  flex-direction: column;
+}
+
+.result-equation {
+  font-size: 22px;
+  line-height: 30px;
+  color: #182b25;
+  font-weight: bold;
+}
+
+.result-meta {
+  margin-top: 6px;
+  font-size: 18px;
+  line-height: 24px;
+  color: #4f5f59;
+}
+
+.editor-view {
+  width: 100%;
+  height: 100%;
+  background-color: #f4f7f5;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 8px 0px;
+}
+
+.editor-input {
+  width: 100%;
+  height: 72px;
+  padding-left: 16px;
+  padding-right: 16px;
+  border-radius: 24px;
+  background-color: #14251f;
+  border: 2px solid #2d5146;
+  align-items: center;
+  justify-content: center;
+}
+
+.editor-scroll {
+  width: 100%;
+  height: 46px;
+}
+
+.editor-content {
+  height: 46px;
+  flex-direction: row;
+  align-items: center;
+}
+
+.editor-text {
+  font-size: 28px;
+  line-height: 38px;
+  color: #ffffff;
+  font-weight: bold;
+  lines: 1;
+}
+
+.editor-placeholder {
+  font-size: 28px;
+  line-height: 38px;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.cursor {
+  width: 3px;
+  height: 34px;
+  margin-left: 4px;
+  background-color: #ffffff;
+  border-radius: 2px;
+}
+
+.enter-button {
+  width: 80px;
+  height: 36px;
+  margin-top: 8px;
+  border-radius: 18px;
+  background-color: #1e9b6c;
+  color: #ffffff;
+  font-size: 16px;
+  line-height: 36px;
+  text-align: center;
+}
+
+.keyboard-page {
+  width: 100%;
+  height: 305px;
+  position: absolute;
+  left: 0px;
+  bottom: 0px;
+  border: 4px solid #000000;
+  border-radius: 28px;
+  background-color: #000000;
+}
+
+.keyboard-bg {
+  position: absolute;
+  left: 0px;
+  top: 34px;
+  width: 100%;
+  height: 276px;
+}
+
+.arc-progress {
+  start-angle: 204deg;
+  total-angle: -48deg;
+  width: 188px;
+  height: 188px;
+  top: 82px;
+  left: 2px;
+  position: absolute;
+  color: #ffffff;
+  stroke-width: 6px;
+  layer-color: #262626;
+}
+
+#keyboard66 {
+  position: absolute;
+  left: 0px;
+  top: 82px;
+  width: 100%;
+  height: 170px;
+}
+
+.arc-topbar {
+  position: absolute;
+  top: 0px;
+  width: 192px;
+  height: 110px;
+}
+
+.arc-search {
+  position: absolute;
+  left: 3px;
+  top: 47px;
+  width: 186px;
+  height: 60px;
+}
+
+.candidate-scroll {
+  position: absolute;
+  left: 15px;
+  top: 56px;
+  width: 144px;
+  height: 42px;
+}
+
+.candidate-more {
+  position: absolute;
+  left: 120px;
+  top: 57px;
+  width: 60px;
+  height: 40px;
+}
+
+.icon-btn {
+  position: absolute;
+  background-color: #000000;
+  border-radius: 12px;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-img {
+  width: 100%;
+  height: 100%;
+}
+
+.icon-lang {
+  top: 0px;
+  left: 9px;
+  width: 48px;
+  height: 42px;
+}
+
+.icon-num {
+  position: absolute;
+  left: 70px;
+  top: 0px;
+  width: 52px;
+  height: 42px;
+}
+
+.icon-del {
+  position: absolute;
+  left: 135px;
+  top: 0px;
+  width: 48px;
+  height: 42px;
+}
+
+.candidate-panel {
+  position: absolute;
+  top: 47px;
+  width: 100%;
+  height: 263px;
+  background-color: #000000;
+}
+
+.candidate-up {
+  position: absolute;
+  top: 196px;
+  left: 56px;
+  width: 80px;
+  height: 60px;
+}
+
+.item {
+  height: 52px;
+  flex: 1;
+}
+
+.calbtn0 {
+  color: #ffffff;
+  font-size: 28px;
+  background-color: rgba(38, 38, 38, 0);
+  border-radius: 0px;
+  height: 52px;
+  width: 52px;
+  text-align: center;
+}
+
+.calbtn02 {
+  color: #ffffff;
+  background-color: rgba(38, 38, 38, 0);
+  border-radius: 0px;
+  font-size: 32px;
+  text-align: center;
+  height: 42px;
+}
+
+.calbtn66 {
+  color: #ffffff;
+  font-size: 32px;
+  font-weight: bold;
+  background-color: #262626;
+  margin-right: 3px;
+  width: 60px;
+  height: 60px;
+  border-radius: 30px;
+  text-align: center;
+  border: 3px solid rgba(255, 255, 255, 0.06);
+}
+
+.list66 {
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 186px;
+  height: 186px;
+  border-radius: 30px;
+  background-color: #262626;
+  border: 3px solid rgba(255, 255, 255, 0.06);
+  padding: 10px;
+}
+
+.item66 {
+  height: 42px;
+}
+</style>

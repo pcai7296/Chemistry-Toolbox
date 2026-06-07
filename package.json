@@ -1,0 +1,34 @@
+{
+  "name": "chemistry-toolbox",
+  "version": "1.0.0",
+  "description": "Chemistry Toolbox for Xiaomi Vela wearable devices.",
+  "engines": {
+    "node": ">=8.10"
+  },
+  "scripts": {
+    "start": "aiot start --watch --open-nuttx",
+    "build": "aiot build",
+    "release": "aiot release --enable-jsc",
+    "lint": "eslint --fix --ext .js \"src/**/*.js\" --no-error-on-unmatched-pattern"
+  },
+  "lint-staged": {
+    "*.js": [
+      "prettier --write",
+      "eslint --fix",
+      "git add"
+    ],
+    "*.ux": [
+      "prettier --write",
+      "git add"
+    ],
+    "*.{less,css}": [
+      "prettier --write",
+      "stylelint --fix --custom-syntax postcss-less",
+      "git add"
+    ]
+  },
+  "devDependencies": {
+    "@aiot-toolkit/jsc": "^1.0.3",
+    "aiot-toolkit": "^2.0.5"
+  }
+}
