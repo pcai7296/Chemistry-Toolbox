@@ -1,4 +1,4 @@
-## Chemistry Toolbox
+# Chemistry-Toolbox
 
 Xiaomi Vela wearable quick app project scaffolded from the neighboring projects in this workspace.
 
