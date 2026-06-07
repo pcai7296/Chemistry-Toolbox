@@ -1,4 +1,6 @@
-export const reactions = [
+import { generatedReactions } from "./generatedReactions.js"
+
+const curatedReactions = [
   {
     id: "rxn_h2so4_naoh",
     formulas: ["H2SO4", "NaOH", "Na2SO4", "H2O"],
@@ -160,3 +162,37 @@ export const reactions = [
     phenomenon: "生成白色沉淀"
   }
 ]
+
+function normalizeEquation(value) {
+  const normalized = (value || "").replace(/\s+/g, "").replace(/＝/g, "->").replace(/=/g, "->")
+  const parts = normalized.split("->")
+  if (parts.length !== 2) {
+    return normalized.toLowerCase()
+  }
+  const left = parts[0].split("+").filter(Boolean).sort().join("+")
+  const right = parts[1].split("+").filter(Boolean).sort().join("+")
+  return (left + "->" + right).toLowerCase()
+}
+
+const seenEquations = {}
+const mergedReactions = []
+
+for (let i = 0; i < curatedReactions.length; i += 1) {
+  const reaction = curatedReactions[i]
+  const key = normalizeEquation(reaction.equation)
+  if (!seenEquations[key]) {
+    seenEquations[key] = true
+    mergedReactions.push(reaction)
+  }
+}
+
+for (let i = 0; i < generatedReactions.length; i += 1) {
+  const reaction = generatedReactions[i]
+  const key = normalizeEquation(reaction.equation)
+  if (!seenEquations[key]) {
+    seenEquations[key] = true
+    mergedReactions.push(reaction)
+  }
+}
+
+export const reactions = mergedReactions

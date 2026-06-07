@@ -1,0 +1,449 @@
+<template>
+  <div class="page" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
+    <text class="results-back" @click="goBack">返回</text>
+    <text class="results-title">查询结果</text>
+    <text class="results-query">{{searchFormula1Display}} + {{searchFormula2Display}}</text>
+    <text class="results-page-indicator" if="{{searchResults.length > 0}}">{{currentPage + 1}} / {{totalPages}}</text>
+    <list class="results-listview" if="{{visibleResults.length > 0}}">
+      <list-item type="tip" class="results-tip-item">
+        <text class="results-subtitle">同时包含这两个分子式的方程式</text>
+      </list-item>
+      <list-item type="result" for="{{visibleResults}}" class="result-card-item">
+        <div class="result-card">
+          <text class="result-equation-side">{{$item.leftDisplay}}</text>
+          <text class="result-equation-arrow">→</text>
+          <text class="result-equation-side">{{$item.rightDisplay}}</text>
+          <text class="result-meta" if="{{$item.type}}">类型：{{$item.type}}</text>
+          <text class="result-meta" if="{{$item.conditions}}">条件：{{$item.conditions}}</text>
+          <text class="result-meta" if="{{$item.phenomenon}}">现象：{{$item.phenomenon}}</text>
+          <text class="result-meta" if="{{!$item.type && !$item.conditions && !$item.phenomenon}}">已导入方程式库，暂无补充说明</text>
+        </div>
+      </list-item>
+    </list>
+    <text class="results-empty" if="{{!searchResults.length}}">{{emptyMessage}}</text>
+    <div class="results-pagination" if="{{totalPages > 1}}">
+      <div class="page-button {{currentPage <= 0 ? 'page-button-disabled' : ''}}" @click="prevPage">
+        <text class="page-button-text">上一页</text>
+      </div>
+      <text class="page-indicator-text">{{currentPage + 1}} / {{totalPages}}</text>
+      <div class="page-button {{currentPage >= totalPages - 1 ? 'page-button-disabled' : ''}}" @click="nextPage">
+        <text class="page-button-text">下一页</text>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import storage from "@system.storage"
+import router from "@system.router"
+import { searchReactionsByPair } from "../../services/chemSearch.js"
+
+const STORAGE_KEY_SEARCH_LEFT = "CHEMISTRY_TOOLBOX_SEARCH_LEFT"
+const STORAGE_KEY_SEARCH_RIGHT = "CHEMISTRY_TOOLBOX_SEARCH_RIGHT"
+const RESULTS_PER_PAGE = 4
+const SWIPE_DISTANCE = 72
+
+function splitCharge(raw) {
+  const value = raw || ""
+  const match = value.match(/^(.*?)(\^(\d*)([+-]))$/)
+  if (match) {
+    return {
+      body: match[1],
+      chargeDigits: match[3] || "",
+      chargeSign: match[4] || ""
+    }
+  }
+  return {
+    body: value,
+    chargeDigits: "",
+    chargeSign: ""
+  }
+}
+
+const SUBSCRIPT_MAP = {
+  "0": "₀",
+  "1": "₁",
+  "2": "₂",
+  "3": "₃",
+  "4": "₄",
+  "5": "₅",
+  "6": "₆",
+  "7": "₇",
+  "8": "₈",
+  "9": "₉"
+}
+const SUPERSCRIPT_MAP = {
+  "0": "⁰",
+  "1": "¹",
+  "2": "²",
+  "3": "³",
+  "4": "⁴",
+  "5": "⁵",
+  "6": "⁶",
+  "7": "⁷",
+  "8": "⁸",
+  "9": "⁹",
+  "+": "⁺",
+  "-": "⁻"
+}
+
+function formatFormulaText(raw) {
+  const value = raw || ""
+  const parts = splitCharge(value)
+  let body = ""
+  for (let i = 0; i < parts.body.length; i += 1) {
+    const char = parts.body[i]
+    const prev = i > 0 ? parts.body[i - 1] : ""
+    const shouldSubscript = /[0-9]/.test(char) && (/[A-Za-z\)\]]/.test(prev) || /[0-9]/.test(prev))
+    body += shouldSubscript ? (SUBSCRIPT_MAP[char] || char) : char
+  }
+
+  let charge = ""
+  const chargeText = (parts.chargeDigits || "") + (parts.chargeSign || "")
+  for (let i = 0; i < chargeText.length; i += 1) {
+    const char = chargeText[i]
+    charge += SUPERSCRIPT_MAP[char] || char
+  }
+  return body + charge
+}
+
+function formatEquationSideText(side) {
+  const tokens = (side || "").split("+")
+  const result = []
+  for (let i = 0; i < tokens.length; i += 1) {
+    const token = tokens[i].trim()
+    if (!token) {
+      continue
+    }
+    const match = token.match(/^(\d+)(.*)$/)
+    if (match && match[2]) {
+      result.push(match[1] + formatFormulaText(match[2]))
+    } else {
+      result.push(formatFormulaText(token))
+    }
+  }
+  return result.join(" + ")
+}
+
+export default {
+  private: {
+    searchFormula1: "",
+    searchFormula2: "",
+    searchFormula1Display: "",
+    searchFormula2Display: "",
+    searchResults: [],
+    visibleResults: [],
+    currentPage: 0,
+    totalPages: 1,
+    emptyMessage: "没有找到同时包含这两个分子式的方程式"
+  },
+
+  onInit() {
+    this.touchStartX = null
+    this.touchStartY = null
+    this.loadSearchInputs()
+  },
+
+  loadSearchInputs() {
+    storage.get({
+      key: STORAGE_KEY_SEARCH_LEFT,
+      success: (left) => {
+        const formula1 = left || ""
+        storage.get({
+          key: STORAGE_KEY_SEARCH_RIGHT,
+          success: (right) => {
+            const formula2 = right || ""
+            this.applySearch(formula1, formula2)
+          },
+          fail: () => {
+            this.applySearch(formula1, "")
+          }
+        })
+      },
+      fail: () => {
+        this.applySearch("", "")
+      }
+    })
+  },
+
+  applySearch(formula1, formula2) {
+    this.searchFormula1 = formula1
+    this.searchFormula2 = formula2
+    this.searchFormula1Display = formatFormulaText(formula1)
+    this.searchFormula2Display = formatFormulaText(formula2)
+
+    if (!formula1 || !formula2) {
+      this.searchResults = []
+      this.visibleResults = []
+      this.currentPage = 0
+      this.totalPages = 1
+      this.emptyMessage = "没有查询参数，请返回主页重新搜索"
+      return
+    }
+
+    const rawResults = searchReactionsByPair(formula1, formula2)
+    this.searchResults = rawResults.map((item) => {
+      const equation = item.equation || ""
+      const parts = equation.split("->")
+      const left = (parts[0] || "").trim()
+      const right = (parts[1] || "").trim()
+      return {
+        id: item.id,
+        type: item.type || "",
+        conditions: item.conditions || "",
+        phenomenon: item.phenomenon || "",
+        leftDisplay: formatEquationSideText(left),
+        rightDisplay: formatEquationSideText(right)
+      }
+    })
+    this.currentPage = 0
+    this.totalPages = Math.max(1, Math.ceil(this.searchResults.length / RESULTS_PER_PAGE))
+    this.updateVisibleResults()
+    this.emptyMessage = "没有找到同时包含这两个分子式的方程式"
+  },
+
+  updateVisibleResults() {
+    const start = this.currentPage * RESULTS_PER_PAGE
+    this.visibleResults = this.searchResults.slice(start, start + RESULTS_PER_PAGE)
+  },
+
+  nextPage() {
+    if (this.currentPage >= this.totalPages - 1) {
+      return
+    }
+    this.currentPage += 1
+    this.updateVisibleResults()
+  },
+
+  prevPage() {
+    if (this.currentPage <= 0) {
+      return
+    }
+    this.currentPage -= 1
+    this.updateVisibleResults()
+  },
+
+  handleTouchStart(eve) {
+    this.touchStartX = this.getPoint(eve, "x")
+    this.touchStartY = this.getPoint(eve, "y")
+  },
+
+  handleTouchEnd(eve) {
+    const endX = this.getPoint(eve, "x")
+    const endY = this.getPoint(eve, "y")
+    if (this.touchStartX === null || endX === null) {
+      return
+    }
+
+    const deltaX = endX - this.touchStartX
+    const deltaY = (endY || 0) - (this.touchStartY || 0)
+    const absX = Math.abs(deltaX)
+    const absY = Math.abs(deltaY)
+    if (absX >= SWIPE_DISTANCE && absX > absY) {
+      if (deltaX <= -SWIPE_DISTANCE) {
+        this.nextPage()
+      } else if (deltaX >= SWIPE_DISTANCE) {
+        this.prevPage()
+      }
+    }
+
+    this.touchStartX = null
+    this.touchStartY = null
+  },
+
+  getPoint(eve, axis) {
+    if (!eve) {
+      return null
+    }
+    const point = (eve.touches && eve.touches[0]) || (eve.changedTouches && eve.changedTouches[0]) || eve
+    const candidates = axis === "x"
+      ? ["globalX", "screenX", "clientX", "pageX", "x"]
+      : ["globalY", "screenY", "clientY", "pageY", "y"]
+    for (let i = 0; i < candidates.length; i += 1) {
+      const key = candidates[i]
+      if (typeof point[key] === "number") {
+        return point[key]
+      }
+    }
+    return null
+  },
+
+  goBack() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.page {
+  width: 336px;
+  height: 480px;
+  background-color: #f4f7f5;
+}
+
+.results-back {
+  position: absolute;
+  left: 18px;
+  top: 18px;
+  width: 60px;
+  font-size: 20px;
+  line-height: 24px;
+  color: #1e9b6c;
+  text-align: center;
+}
+
+.results-title {
+  position: absolute;
+  left: 78px;
+  top: 30px;
+  width: 180px;
+  font-size: 28px;
+  line-height: 34px;
+  color: #16231f;
+  text-align: center;
+  font-weight: bold;
+}
+
+.results-query {
+  position: absolute;
+  left: 18px;
+  top: 82px;
+  width: 300px;
+  font-size: 22px;
+  line-height: 28px;
+  color: #244238;
+  text-align: center;
+  font-weight: bold;
+}
+
+.results-page-indicator {
+  position: absolute;
+  right: 18px;
+  top: 84px;
+  width: 64px;
+  font-size: 18px;
+  line-height: 24px;
+  color: #6a7b74;
+  text-align: right;
+}
+
+.results-subtitle {
+  width: 100%;
+  padding: 0 8px;
+  font-size: 18px;
+  line-height: 24px;
+  color: #6a7b74;
+  text-align: center;
+}
+
+.results-empty {
+  position: absolute;
+  left: 18px;
+  top: 180px;
+  width: 300px;
+  font-size: 20px;
+  line-height: 28px;
+  color: #6a7b74;
+  text-align: center;
+}
+
+.results-listview {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 336px;
+  height: 480px;
+  padding: 122px 12px 62px;
+}
+
+.results-tip-item {
+  width: 100%;
+  height: 34px;
+  justify-content: center;
+}
+
+.result-card-item {
+  width: 100%;
+  height: 116px;
+  padding-bottom: 8px;
+}
+
+.result-card {
+  width: 100%;
+  height: 108px;
+  padding: 8px 12px;
+  border-radius: 18px;
+  background-color: #e3eee9;
+  border: 2px solid #c7d9d1;
+  flex-direction: column;
+}
+
+.result-equation-arrow {
+  margin-top: 1px;
+  margin-bottom: 1px;
+  font-size: 18px;
+  line-height: 22px;
+  color: #4f5f59;
+  text-align: center;
+}
+
+.result-equation-side {
+  width: 100%;
+  font-size: 18px;
+  line-height: 22px;
+  color: #182b25;
+  font-weight: bold;
+  text-align: center;
+  lines: 1;
+  text-overflow: clip;
+}
+
+.result-meta {
+  margin-top: 2px;
+  font-size: 14px;
+  line-height: 18px;
+  color: #4f5f59;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+
+.results-pagination {
+  position: absolute;
+  left: 48px;
+  bottom: 10px;
+  width: 240px;
+  height: 36px;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+}
+
+.page-button {
+  width: 74px;
+  height: 36px;
+  border-radius: 18px;
+  background-color: #1e9b6c;
+  justify-content: center;
+  align-items: center;
+}
+
+.page-button-disabled {
+  background-color: #b7c9c1;
+}
+
+.page-button-text {
+  font-size: 16px;
+  line-height: 20px;
+  color: #ffffff;
+  text-align: center;
+}
+
+.page-indicator-text {
+  width: 92px;
+  font-size: 18px;
+  line-height: 22px;
+  color: #4f5f59;
+  text-align: center;
+  font-weight: bold;
+}
+</style>
