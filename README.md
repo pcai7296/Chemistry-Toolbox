@@ -50,8 +50,8 @@ src/
 ├─ components/
 │  └─ InputMethod/          # 迁移并改造后的输入法组件资源
 ├─ data/
-│  ├─ reactions.js          # 手工整理 + 导入库合并后的反应数据入口
-│  └─ generatedReactions.js # 由导入脚本生成的批量反应数据
+│  ├─ reactions.js          # 手工整理的高质量反应数据
+│  └─ generatedReactionText.js # 由导入脚本生成的紧凑批量反应索引
 ├─ pages/
 │  ├─ index/                # 首页与化学式输入
 │  └─ results/              # 查询结果页
@@ -78,7 +78,7 @@ python scripts/import_reactions.py
 
 脚本会根据本地资料文本重新生成：
 
-- `src/data/generatedReactions.js`
+- `src/data/generatedReactionText.js`
 
 ## 本地开发
 
@@ -141,4 +141,3 @@ npm run release
 - 双输入框检索页示例
 - 小屏结果列表分页示例
 - 可定制输入键盘改造示例
-

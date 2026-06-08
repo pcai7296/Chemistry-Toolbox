@@ -1,18 +1,14 @@
 <template>
   <div class="page" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
-    <text class="results-back" @click="goBack">返回</text>
-    <text class="results-title">查询结果</text>
-    <text class="results-query">{{searchFormula1Display}} + {{searchFormula2Display}}</text>
-    <text class="results-page-indicator" if="{{searchResults.length > 0}}">{{currentPage + 1}} / {{totalPages}}</text>
     <list class="results-listview" if="{{visibleResults.length > 0}}">
       <list-item type="tip" class="results-tip-item">
         <text class="results-subtitle">同时包含这两个分子式的方程式</text>
       </list-item>
-      <list-item type="result" for="{{visibleResults}}" class="result-card-item">
-        <div class="result-card">
-          <text class="result-equation-side">{{$item.leftDisplay}}</text>
+      <list-item type="result" for="{{visibleResults}}" class="result-card-item" style="height: {{$item.itemHeight}}px;">
+        <div class="result-card" style="height: {{$item.cardHeight}}px;">
+          <text class="result-equation-side" style="height: {{$item.leftTextHeight}}px;">{{$item.leftDisplay}}</text>
           <text class="result-equation-arrow">→</text>
-          <text class="result-equation-side">{{$item.rightDisplay}}</text>
+          <text class="result-equation-side" style="height: {{$item.rightTextHeight}}px;">{{$item.rightDisplay}}</text>
           <text class="result-meta" if="{{$item.type}}">类型：{{$item.type}}</text>
           <text class="result-meta" if="{{$item.conditions}}">条件：{{$item.conditions}}</text>
           <text class="result-meta" if="{{$item.phenomenon}}">现象：{{$item.phenomenon}}</text>
@@ -21,6 +17,11 @@
       </list-item>
     </list>
     <text class="results-empty" if="{{!searchResults.length}}">{{emptyMessage}}</text>
+    <div class="results-header">
+      <text class="results-back" @click="goBack">返回</text>
+      <text class="results-title">查询结果</text>
+      <text class="results-query">{{searchFormula1Display}} + {{searchFormula2Display}}</text>
+    </div>
     <div class="results-pagination" if="{{totalPages > 1}}">
       <div class="page-button {{currentPage <= 0 ? 'page-button-disabled' : ''}}" @click="prevPage">
         <text class="page-button-text">上一页</text>
@@ -42,6 +43,13 @@ const STORAGE_KEY_SEARCH_LEFT = "CHEMISTRY_TOOLBOX_SEARCH_LEFT"
 const STORAGE_KEY_SEARCH_RIGHT = "CHEMISTRY_TOOLBOX_SEARCH_RIGHT"
 const RESULTS_PER_PAGE = 4
 const SWIPE_DISTANCE = 72
+const SIDE_LINE_CHARS = 20
+const SIDE_LINE_HEIGHT = 26
+const META_LINE_HEIGHT = 20
+const CARD_VERTICAL_PADDING = 20
+const CARD_BOTTOM_GAP = 10
+const ARROW_HEIGHT = 30
+const MIN_CARD_HEIGHT = 116
 
 function splitCharge(raw) {
   const value = raw || ""
@@ -125,6 +133,47 @@ function formatEquationSideText(side) {
   return result.join(" + ")
 }
 
+function estimateLineCount(text, charsPerLine) {
+  const value = text || ""
+  if (!value) {
+    return 1
+  }
+  return Math.max(1, Math.ceil(value.length / charsPerLine))
+}
+
+function getMetaLineCount(item) {
+  let count = 0
+  if (item.type) {
+    count += 1
+  }
+  if (item.conditions) {
+    count += 1
+  }
+  if (item.phenomenon) {
+    count += 1
+  }
+  return count || 1
+}
+
+function withMeasuredLayout(item) {
+  const leftLines = estimateLineCount(item.leftDisplay, SIDE_LINE_CHARS)
+  const rightLines = estimateLineCount(item.rightDisplay, SIDE_LINE_CHARS)
+  const metaLines = getMetaLineCount(item)
+  const leftTextHeight = leftLines * SIDE_LINE_HEIGHT
+  const rightTextHeight = rightLines * SIDE_LINE_HEIGHT
+  const metaHeight = metaLines * META_LINE_HEIGHT
+  const cardHeight = Math.max(
+    MIN_CARD_HEIGHT,
+    CARD_VERTICAL_PADDING + leftTextHeight + ARROW_HEIGHT + rightTextHeight + metaHeight
+  )
+  return Object.assign({}, item, {
+    leftTextHeight,
+    rightTextHeight,
+    cardHeight,
+    itemHeight: cardHeight + CARD_BOTTOM_GAP
+  })
+}
+
 export default {
   private: {
     searchFormula1: "",
@@ -187,14 +236,14 @@ export default {
       const parts = equation.split("->")
       const left = (parts[0] || "").trim()
       const right = (parts[1] || "").trim()
-      return {
+      return withMeasuredLayout({
         id: item.id,
         type: item.type || "",
         conditions: item.conditions || "",
         phenomenon: item.phenomenon || "",
         leftDisplay: formatEquationSideText(left),
         rightDisplay: formatEquationSideText(right)
-      }
+      })
     })
     this.currentPage = 0
     this.totalPages = Math.max(1, Math.ceil(this.searchResults.length / RESULTS_PER_PAGE))
@@ -281,6 +330,15 @@ export default {
   background-color: #f4f7f5;
 }
 
+.results-header {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 336px;
+  height: 118px;
+  background-color: #f4f7f5;
+}
+
 .results-back {
   position: absolute;
   left: 18px;
@@ -316,17 +374,6 @@ export default {
   font-weight: bold;
 }
 
-.results-page-indicator {
-  position: absolute;
-  right: 18px;
-  top: 84px;
-  width: 64px;
-  font-size: 18px;
-  line-height: 24px;
-  color: #6a7b74;
-  text-align: right;
-}
-
 .results-subtitle {
   width: 100%;
   padding: 0 8px;
@@ -353,7 +400,7 @@ export default {
   top: 0px;
   width: 336px;
   height: 480px;
-  padding: 122px 12px 62px;
+  padding: 128px 12px 62px;
 }
 
 .results-tip-item {
@@ -364,14 +411,12 @@ export default {
 
 .result-card-item {
   width: 100%;
-  height: 116px;
-  padding-bottom: 8px;
+  padding-bottom: 10px;
 }
 
 .result-card {
   width: 100%;
-  height: 108px;
-  padding: 8px 12px;
+  padding: 10px 12px;
   border-radius: 18px;
   background-color: #e3eee9;
   border: 2px solid #c7d9d1;
@@ -379,10 +424,10 @@ export default {
 }
 
 .result-equation-arrow {
-  margin-top: 1px;
-  margin-bottom: 1px;
+  margin-top: 3px;
+  margin-bottom: 3px;
   font-size: 18px;
-  line-height: 22px;
+  line-height: 24px;
   color: #4f5f59;
   text-align: center;
 }
@@ -390,18 +435,18 @@ export default {
 .result-equation-side {
   width: 100%;
   font-size: 18px;
-  line-height: 22px;
+  line-height: 26px;
   color: #182b25;
   font-weight: bold;
   text-align: center;
-  lines: 1;
+  lines: 4;
   text-overflow: clip;
 }
 
 .result-meta {
-  margin-top: 2px;
+  margin-top: 4px;
   font-size: 14px;
-  line-height: 18px;
+  line-height: 20px;
   color: #4f5f59;
   lines: 1;
   text-overflow: ellipsis;

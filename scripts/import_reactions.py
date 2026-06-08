@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE_TXT = Path(os.environ["USERPROFILE"]) / "Downloads" / "最全高中化学方程式分类汇总.txt"
-OUTPUT_JS = ROOT / "src" / "data" / "generatedReactions.js"
+OUTPUT_JS = ROOT / "src" / "data" / "generatedReactionText.js"
 
 EQUATION_FIXES = {
     "K2CO3+CaCl2->CaCO3↓+2KC": "K2CO3+CaCl2 -> CaCO3↓+2KCl",
@@ -188,8 +188,13 @@ def load_reactions() -> list[dict]:
 
 
 def write_output(reactions: list[dict]) -> None:
-    payload = json.dumps(reactions, ensure_ascii=False, indent=2)
-    OUTPUT_JS.write_text(f"export const generatedReactions = {payload}\n", encoding="utf-8")
+    lines = []
+    for reaction in reactions:
+        formulas = ",".join(reaction["formulas"])
+        equation = reaction["equation"]
+        lines.append(f"{formulas}\t{equation}")
+    payload = json.dumps("\n".join(lines), ensure_ascii=False)
+    OUTPUT_JS.write_text(f"export const generatedReactionText = {payload}\n", encoding="utf-8")
 
 
 def main() -> None:

@@ -267,6 +267,8 @@ export default {
     isEditing: false,
     hideKeyboard: true,
     homeMessage: "",
+    isSearching: false,
+    searchDotCount: 1,
     downFlag: "",
     numFlag: false,
     percent66: 0,
@@ -285,6 +287,8 @@ export default {
   onInit() {
     this.touchStartX = null
     this.touchStartY = null
+    this.searchLoadingTimer = null
+    this.didNavigateToResults = false
     this.loadSavedText()
     this.refreshKeyboardState()
     device.getInfo({
@@ -294,6 +298,23 @@ export default {
         }
       }
     })
+  },
+
+  onShow() {
+    if (this.didNavigateToResults) {
+      this.didNavigateToResults = false
+      this.clearSearchLoading(true)
+    }
+  },
+
+  onHide() {
+    if (!this.didNavigateToResults) {
+      this.clearSearchLoading(true)
+    }
+  },
+
+  onDestroy() {
+    this.clearSearchLoading(true)
   },
 
   loadSavedText() {
@@ -318,7 +339,7 @@ export default {
   },
 
   openEditor() {
-    this.homeMessage = ""
+    this.clearSearchLoading(true)
     this.activeInput = 1
     this.setDraftText(this.savedText1 || "")
     this.isEditing = true
@@ -328,7 +349,7 @@ export default {
   },
 
   openSecondEditor() {
-    this.homeMessage = ""
+    this.clearSearchLoading(true)
     this.activeInput = 2
     this.setDraftText(this.savedText2 || "")
     this.isEditing = true
@@ -516,20 +537,75 @@ export default {
   },
 
   searchEquations() {
+    if (this.isSearching) {
+      return
+    }
+
     const formula1 = this.normalizeFormula(this.savedText1)
     const formula2 = this.normalizeFormula(this.savedText2)
 
     if (!formula1 || !formula2) {
+      this.clearSearchLoading(false)
       this.homeMessage = "请先输入两个分子式"
       return
     }
 
-    this.homeMessage = ""
-    storage.set({ key: STORAGE_KEY_SEARCH_LEFT, value: formula1 })
-    storage.set({ key: STORAGE_KEY_SEARCH_RIGHT, value: formula2 })
+    this.startSearchLoading()
+    this.saveSearchInputs(formula1, formula2)
+    this.didNavigateToResults = true
     router.push({
       uri: "/pages/results"
     })
+  },
+
+  saveSearchInputs(formula1, formula2) {
+    storage.set({
+      key: STORAGE_KEY_SEARCH_LEFT,
+      value: formula1
+    })
+    storage.set({
+      key: STORAGE_KEY_SEARCH_RIGHT,
+      value: formula2
+    })
+  },
+
+  startSearchLoading() {
+    this.clearSearchLoading(false)
+    this.isSearching = true
+    this.searchDotCount = 1
+    this.updateSearchLoadingText()
+    this.queueSearchLoadingTick()
+  },
+
+  queueSearchLoadingTick() {
+    this.searchLoadingTimer = setTimeout(() => {
+      if (!this.isSearching) {
+        return
+      }
+      this.searchDotCount = this.searchDotCount >= 6 ? 1 : this.searchDotCount + 1
+      this.updateSearchLoadingText()
+      this.queueSearchLoadingTick()
+    }, 500)
+  },
+
+  updateSearchLoadingText() {
+    let dots = ""
+    for (let i = 0; i < this.searchDotCount; i += 1) {
+      dots += "."
+    }
+    this.homeMessage = "搜索中" + dots
+  },
+
+  clearSearchLoading(clearMessage) {
+    if (this.searchLoadingTimer) {
+      clearTimeout(this.searchLoadingTimer)
+      this.searchLoadingTimer = null
+    }
+    this.isSearching = false
+    this.searchDotCount = 1
+    if (clearMessage) {
+      this.homeMessage = ""
+    }
   },
 
   getPoint(eve, axis) {

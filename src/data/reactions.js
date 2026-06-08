@@ -1,5 +1,3 @@
-import { generatedReactions } from "./generatedReactions.js"
-
 const curatedReactions = [
   {
     id: "rxn_h2so4_naoh",
@@ -175,24 +173,15 @@ function normalizeEquation(value) {
 }
 
 const seenEquations = {}
-const mergedReactions = []
+const reactions = []
 
 for (let i = 0; i < curatedReactions.length; i += 1) {
   const reaction = curatedReactions[i]
   const key = normalizeEquation(reaction.equation)
   if (!seenEquations[key]) {
     seenEquations[key] = true
-    mergedReactions.push(reaction)
+    reactions.push(reaction)
   }
 }
 
-for (let i = 0; i < generatedReactions.length; i += 1) {
-  const reaction = generatedReactions[i]
-  const key = normalizeEquation(reaction.equation)
-  if (!seenEquations[key]) {
-    seenEquations[key] = true
-    mergedReactions.push(reaction)
-  }
-}
-
-export const reactions = mergedReactions
+export { reactions, normalizeEquation }
