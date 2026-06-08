@@ -1,8 +1,8 @@
 {
   "package": "com.chemistry.toolbox.miband",
   "name": "化学工具箱",
-  "versionName": "1.0.0",
-  "versionCode": 1,
+  "versionName": "1.4.2",
+  "versionCode": 10402,
   "minPlatformVersion": 1000,
   "icon": "/common/logo.png",
   "deviceTypeList": [
@@ -37,6 +37,15 @@
       },
       "pages/results": {
         "component": "results"
+      },
+      "pages/sponsor": {
+        "component": "sponsor"
+      },
+      "pages/about": {
+        "component": "about"
+      },
+      "pages/guide": {
+        "component": "guide"
       }
     }
   }

@@ -45,7 +45,7 @@ const RESULTS_PER_PAGE = 4
 const SWIPE_DISTANCE = 72
 const SIDE_LINE_CHARS = 20
 const SIDE_LINE_HEIGHT = 26
-const META_LINE_HEIGHT = 20
+const META_LINE_HEIGHT = 22
 const CARD_VERTICAL_PADDING = 20
 const CARD_BOTTOM_GAP = 10
 const ARROW_HEIGHT = 30
@@ -144,13 +144,13 @@ function estimateLineCount(text, charsPerLine) {
 function getMetaLineCount(item) {
   let count = 0
   if (item.type) {
-    count += 1
+    count += estimateLineCount("类型：" + item.type, 19)
   }
   if (item.conditions) {
-    count += 1
+    count += estimateLineCount("条件：" + item.conditions, 19)
   }
   if (item.phenomenon) {
-    count += 1
+    count += estimateLineCount("现象：" + item.phenomenon, 19)
   }
   return count || 1
 }
@@ -335,25 +335,30 @@ export default {
   left: 0px;
   top: 0px;
   width: 336px;
-  height: 118px;
+  height: 124px;
   background-color: #f4f7f5;
 }
 
 .results-back {
   position: absolute;
-  left: 18px;
-  top: 18px;
-  width: 60px;
+  left: 128px;
+  top: 8px;
+  width: 80px;
+  height: 44px;
   font-size: 20px;
-  line-height: 24px;
-  color: #1e9b6c;
+  line-height: 44px;
+  color: #ffffff;
   text-align: center;
+  font-weight: bold;
+  border-radius: 22px;
+  background-color: #1e9b6c;
+  border: 2px solid #157d58;
 }
 
 .results-title {
   position: absolute;
   left: 78px;
-  top: 30px;
+  top: 54px;
   width: 180px;
   font-size: 28px;
   line-height: 34px;
@@ -365,13 +370,15 @@ export default {
 .results-query {
   position: absolute;
   left: 18px;
-  top: 82px;
+  top: 86px;
   width: 300px;
-  font-size: 22px;
-  line-height: 28px;
+  font-size: 19px;
+  line-height: 24px;
   color: #244238;
   text-align: center;
   font-weight: bold;
+  lines: 1;
+  text-overflow: ellipsis;
 }
 
 .results-subtitle {
@@ -396,11 +403,11 @@ export default {
 
 .results-listview {
   position: absolute;
-  left: 0px;
+  left: 48px;
   top: 0px;
-  width: 336px;
+  width: 240px;
   height: 480px;
-  padding: 128px 12px 62px;
+  padding: 132px 0px 62px;
 }
 
 .results-tip-item {
@@ -446,18 +453,18 @@ export default {
 .result-meta {
   margin-top: 4px;
   font-size: 14px;
-  line-height: 20px;
+  line-height: 22px;
   color: #4f5f59;
-  lines: 1;
+  lines: 2;
   text-overflow: ellipsis;
 }
 
 .results-pagination {
   position: absolute;
   left: 48px;
-  bottom: 10px;
+  bottom: 8px;
   width: 240px;
-  height: 36px;
+  height: 44px;
   flex-direction: row;
   justify-content: center;
   align-items: center;
@@ -465,8 +472,8 @@ export default {
 
 .page-button {
   width: 74px;
-  height: 36px;
-  border-radius: 18px;
+  height: 44px;
+  border-radius: 22px;
   background-color: #1e9b6c;
   justify-content: center;
   align-items: center;

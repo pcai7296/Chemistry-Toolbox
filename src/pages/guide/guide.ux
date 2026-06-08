@@ -1,0 +1,148 @@
+<template>
+  <div class="guide-page">
+    <text class="guide-back" @click="goBack">返回</text>
+    <text class="guide-title">使用说明</text>
+    <list class="guide-list">
+      <list-item type="guide" for="{{guideItems}}" class="guide-item" style="height: {{$item.itemHeight}}px;">
+        <div class="guide-card" style="height: {{$item.cardHeight}}px;">
+          <text class="guide-card-title">{{$item.title}}</text>
+          <text class="guide-card-body" style="height: {{$item.bodyHeight}}px;">{{$item.body}}</text>
+        </div>
+      </list-item>
+    </list>
+  </div>
+</template>
+
+<script>
+import router from "@system.router"
+
+const GUIDE_ITEMS = [
+  {
+    title: "1. 输入分子式",
+    body: "分别点击两个输入框，输入想同时查询的两个分子式，例如 HCl 和 NaOH。"
+  },
+  {
+    title: "2. 使用键盘",
+    body: "元素键用于输入原子，123 用于输入原子数，荷用于输入正负电荷，组可快速输入常见基团。"
+  },
+  {
+    title: "3. 查看结果",
+    body: "按搜索后，会列出同时包含两个分子式的化学方程式。结果较多时可上下滑动或翻页。"
+  },
+  {
+    title: "4. 编辑与删除",
+    body: "编辑页点击回车保存，点击红色删除可一键清空当前输入框。"
+  },
+  {
+    title: "注意",
+    body: "请尽量输入标准分子式。数据库仍在完善，如有错误或缺漏，可在关于页联系反馈。"
+  }
+]
+
+function estimateLines(text) {
+  return Math.max(1, Math.ceil((text || "").length / 16))
+}
+
+function buildGuideItems() {
+  return GUIDE_ITEMS.map((item) => {
+    const bodyLines = estimateLines(item.body)
+    const bodyHeight = bodyLines * 18
+    const cardHeight = 44 + bodyHeight
+    return Object.assign({}, item, {
+      bodyHeight,
+      cardHeight,
+      itemHeight: cardHeight + 10
+    })
+  })
+}
+
+export default {
+  private: {
+    guideItems: buildGuideItems()
+  },
+
+  goBack() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.guide-page {
+  width: 100%;
+  height: 100%;
+  background-color: #f4f7f5;
+}
+
+.guide-back {
+  position: absolute;
+  left: 66px;
+  top: 14px;
+  width: 80px;
+  height: 44px;
+  color: #ffffff;
+  font-size: 20px;
+  line-height: 44px;
+  text-align: center;
+  font-weight: bold;
+  border-radius: 22px;
+  background-color: #1e9b6c;
+  border: 2px solid #157d58;
+}
+
+.guide-title {
+  position: absolute;
+  left: 46px;
+  top: 62px;
+  width: 120px;
+  height: 36px;
+  color: #16231f;
+  font-size: 26px;
+  line-height: 36px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.guide-list {
+  position: absolute;
+  left: 12px;
+  width: 188px;
+  top: 108px;
+  height: 370px;
+}
+
+.guide-item {
+  width: 188px;
+}
+
+.guide-card {
+  width: 188px;
+  border-radius: 18px;
+  background-color: #ffffff;
+  border: 2px solid #d7e2dd;
+  flex-direction: column;
+}
+
+.guide-card-title {
+  width: 164px;
+  height: 22px;
+  margin-left: 12px;
+  margin-top: 8px;
+  color: #1e9b6c;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: bold;
+  text-align: left;
+}
+
+.guide-card-body {
+  width: 164px;
+  margin-left: 12px;
+  margin-top: 4px;
+  color: #4f5f59;
+  font-size: 13px;
+  line-height: 18px;
+  text-overflow: clip;
+  text-align: left;
+}
+</style>

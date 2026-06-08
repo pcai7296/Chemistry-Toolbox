@@ -8,6 +8,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
+SOURCE_PDF = Path(os.environ["USERPROFILE"]) / "Downloads" / "最全高中化学方程式分类汇总.pdf"
 SOURCE_TXT = Path(os.environ["USERPROFILE"]) / "Downloads" / "最全高中化学方程式分类汇总.txt"
 OUTPUT_JS = ROOT / "src" / "data" / "generatedReactionText.js"
 
@@ -74,8 +75,20 @@ def strip_notes(text: str) -> str:
     result = re.sub(r"\((?=[^)]*[\u4e00-\u9fff])[^)]*\)", "", result)
     result = re.sub(r"（.*$", "", result)
     result = re.sub(r"\((?=.*[\u4e00-\u9fff]).*$", "", result)
+    result = re.sub(r"\(([glsaq])\)", "", result)
     result = result.replace("．", ".").replace("•", "·")
+    result = result.replace("；", "")
     return result.strip()
+
+
+def has_unreliable_pdf_text(text: str) -> bool:
+    if not text:
+        return True
+    if any(mark in text for mark in ["\uf02d", "\uf02b", "ΔH", "kJ", "mol-1", "——", "—", "≡", "："]):
+        return True
+    if re.search(r"[\u4e00-\u9fff]", text):
+        return True
+    return False
 
 
 def normalize_equation(text: str) -> str:
@@ -88,6 +101,8 @@ def normalize_equation(text: str) -> str:
     if not left or not right:
         return ""
     equation = f"{left} -> {right}"
+    if has_unreliable_pdf_text(equation):
+        return ""
     compact = equation.replace(" ", "")
     return EQUATION_FIXES.get(compact, equation)
 
@@ -114,6 +129,8 @@ def extract_formulas(equation: str) -> list[str]:
         formula = clean_formula(token)
         if not formula:
             continue
+        if has_unreliable_pdf_text(formula):
+            continue
         if not re.search(r"[A-Z]", formula):
             continue
         if formula in seen:
@@ -121,6 +138,21 @@ def extract_formulas(equation: str) -> list[str]:
         seen.add(formula)
         values.append(formula)
     return values
+
+
+def load_source_text() -> str:
+    if SOURCE_PDF.exists():
+        try:
+            from pypdf import PdfReader
+
+            reader = PdfReader(str(SOURCE_PDF))
+            pages = []
+            for page in reader.pages:
+                pages.append(page.extract_text() or "")
+            return "\n".join(pages)
+        except Exception:
+            pass
+    return SOURCE_TXT.read_text(encoding="utf-8")
 
 
 def build_candidates(lines: list[str]) -> list[str]:
@@ -153,7 +185,7 @@ def build_candidates(lines: list[str]) -> list[str]:
 
 
 def load_reactions() -> list[dict]:
-    text = SOURCE_TXT.read_text(encoding="utf-8")
+    text = load_source_text()
     lines = text.splitlines()
     candidates = build_candidates(lines)
 

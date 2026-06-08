@@ -13,6 +13,17 @@
       <div class="search-button" @click="searchEquations">
         <text class="search-button-text">搜索</text>
       </div>
+      <div class="secondary-actions">
+        <div class="sponsor-button" @click="openSponsor">
+          <text class="sponsor-button-text">赞助</text>
+        </div>
+        <div class="about-button" @click="openAbout">
+          <text class="about-button-text">关于</text>
+        </div>
+      </div>
+      <div class="guide-button" @click="openGuide">
+        <text class="guide-button-text">使用说明</text>
+      </div>
       <text class="home-hint" if="{{homeMessage}}">{{homeMessage}}</text>
     </div>
 
@@ -26,7 +37,10 @@
           </div>
         </scroll>
       </div>
-      <text class="enter-button" if="{{!hideKeyboard}}" @click="saveAndCloseEditor">回车</text>
+      <div class="editor-actions" if="{{!hideKeyboard}}">
+        <text class="enter-button" @click="saveAndCloseEditor">回车</text>
+        <text class="clear-button" @click="clearCurrentInput">删除</text>
+      </div>
     </div>
 
     <div class="keyboard-page" if="{{isEditing && !hideKeyboard}}">
@@ -111,7 +125,7 @@ const EXIT_SWIPE_MAX_Y_DRIFT = 70
 const ELEMENT_KEYS = [
   ["H", "O", "C", "N", "S", "P", "K", "Na", "Cl", "Ca"],
   ["Mg", "Al", "Zn", "Fe", "Cu", "Ag", "Ba", "Si", "Br"],
-  ["Li", "Be", "B", "F", "I", "Cr", "Mn"]
+  ["Li", "Be", "B", "F", "I", "Cr", "Mn", "Pb", "Hg", "As", "Ti", "Sn", "Rb"]
 ]
 
 const NUMBER_KEYS = [
@@ -532,6 +546,22 @@ export default {
     })
   },
 
+  clearCurrentInput() {
+    this.onVibrate()
+    this.setDraftText("")
+    if (this.activeInput === 2) {
+      this.setSavedText(2, "")
+    } else {
+      this.setSavedText(1, "")
+    }
+    storage.set({
+      key: this.activeInput === 2 ? STORAGE_KEY_2 : STORAGE_KEY_1,
+      value: ""
+    })
+    this.downFlag = ""
+    this.refreshKeyboardState()
+  },
+
   normalizeFormula(value) {
     return (value || "").replace(/\s+/g, "")
   },
@@ -566,6 +596,27 @@ export default {
     storage.set({
       key: STORAGE_KEY_SEARCH_RIGHT,
       value: formula2
+    })
+  },
+
+  openSponsor() {
+    this.onVibrate()
+    router.push({
+      uri: "/pages/sponsor"
+    })
+  },
+
+  openAbout() {
+    this.onVibrate()
+    router.push({
+      uri: "/pages/about"
+    })
+  },
+
+  openGuide() {
+    this.onVibrate()
+    router.push({
+      uri: "/pages/guide"
     })
   },
 
@@ -684,7 +735,7 @@ export default {
 .home-input {
   width: 100%;
   height: 54px;
-  margin-top: 28px;
+  margin-top: 24px;
   padding-left: 18px;
   padding-right: 18px;
   border-radius: 27px;
@@ -695,15 +746,16 @@ export default {
 }
 
 .second-input {
-  margin-top: 14px;
+  margin-top: 12px;
 }
 
 .search-button {
-  width: 128px;
-  height: 46px;
-  margin-top: 22px;
-  border-radius: 23px;
+  width: 136px;
+  height: 48px;
+  margin-top: 20px;
+  border-radius: 24px;
   background-color: #1e9b6c;
+  border: 2px solid #157d58;
   align-items: center;
   justify-content: center;
 }
@@ -713,6 +765,69 @@ export default {
   font-size: 24px;
   line-height: 30px;
   font-weight: bold;
+}
+
+.secondary-actions {
+  width: 176px;
+  height: 44px;
+  margin-top: 12px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.sponsor-button {
+  width: 82px;
+  height: 44px;
+  border-radius: 22px;
+  background-color: rgba(255, 255, 255, 0);
+  border: 2px solid #d59b35;
+  align-items: center;
+  justify-content: center;
+}
+
+.sponsor-button-text {
+  color: #9b6a17;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: bold;
+}
+
+.about-button {
+  width: 82px;
+  height: 44px;
+  margin-left: 12px;
+  border-radius: 22px;
+  background-color: rgba(255, 255, 255, 0);
+  border: 2px solid #9aa7a1;
+  align-items: center;
+  justify-content: center;
+}
+
+.about-button-text {
+  color: #5e6c66;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: bold;
+}
+
+.guide-button {
+  width: 176px;
+  height: 40px;
+  margin-top: 10px;
+  border-radius: 20px;
+  background-color: #edf3f0;
+  border: 2px solid #c7d9d1;
+  align-items: center;
+  justify-content: center;
+}
+
+.guide-button-text {
+  color: #4f5f59;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: bold;
+  text-align: center;
 }
 
 .home-input-text {
@@ -794,16 +909,37 @@ export default {
   border-radius: 2px;
 }
 
+.editor-actions {
+  width: 174px;
+  height: 44px;
+  margin-top: 8px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
 .enter-button {
   width: 80px;
-  height: 36px;
-  margin-top: 8px;
-  border-radius: 18px;
+  height: 44px;
+  border-radius: 22px;
   background-color: #1e9b6c;
   color: #ffffff;
   font-size: 16px;
-  line-height: 36px;
+  line-height: 44px;
   text-align: center;
+}
+
+.clear-button {
+  width: 80px;
+  height: 44px;
+  margin-left: 14px;
+  border-radius: 22px;
+  background-color: #d34235;
+  color: #ffffff;
+  font-size: 16px;
+  line-height: 44px;
+  text-align: center;
+  font-weight: bold;
 }
 
 .keyboard-page {

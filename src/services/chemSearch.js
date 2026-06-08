@@ -2,7 +2,8 @@ import { reactions, normalizeEquation } from "../data/reactions.js"
 import { generatedReactionText } from "../data/generatedReactionText.js"
 
 function normalizeFormula(value) {
-  return (value || "").replace(/\s+/g, "").toLowerCase()
+  const normalized = (value || "").replace(/\s+/g, "").toLowerCase()
+  return normalized.replace(/\^(\d*[+-])$/, "$1")
 }
 
 function buildNormalizedSet(formulas) {
