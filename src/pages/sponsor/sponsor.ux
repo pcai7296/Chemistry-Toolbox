@@ -9,8 +9,7 @@
 
 <script>
 import router from "@system.router"
-import device from "@system.device"
-import { createScreenLayout } from "../../services/screenProfile.js"
+import { applyResponsiveLayout } from "../../services/deviceLayout.js"
 
 export default {
   private: {
@@ -25,18 +24,7 @@ export default {
   },
 
   onInit() {
-    this.applyScreenLayout(createScreenLayout(this.screenWidth, this.screenHeight, "pill"))
-    device.getInfo({
-      success: (data) => {
-        if (data) {
-          this.applyScreenLayout(createScreenLayout(
-            data.screenWidth || this.screenWidth,
-            data.screenHeight || this.screenHeight,
-            data.screenShape || ""
-          ))
-        }
-      }
-    })
+    applyResponsiveLayout(this, "pill")
   },
 
   applyScreenLayout(layout) {

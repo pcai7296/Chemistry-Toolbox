@@ -37,9 +37,9 @@
 <script>
 import storage from "@system.storage"
 import router from "@system.router"
-import device from "@system.device"
 import { searchReactionsByPair } from "../../services/chemSearch.js"
-import { createScreenLayout } from "../../services/screenProfile.js"
+import { applyResponsiveLayout } from "../../services/deviceLayout.js"
+import { formatEquationSideText, formatInputFormula } from "../../services/formulaFormat.js"
 
 const STORAGE_KEY_SEARCH_LEFT = "CHEMISTRY_TOOLBOX_SEARCH_LEFT"
 const STORAGE_KEY_SEARCH_RIGHT = "CHEMISTRY_TOOLBOX_SEARCH_RIGHT"
@@ -51,88 +51,6 @@ const CARD_VERTICAL_PADDING = 20
 const CARD_BOTTOM_GAP = 10
 const ARROW_HEIGHT = 30
 const MIN_CARD_HEIGHT = 116
-
-function splitCharge(raw) {
-  const value = raw || ""
-  const match = value.match(/^(.*?)(\^(\d*)([+-]))$/)
-  if (match) {
-    return {
-      body: match[1],
-      chargeDigits: match[3] || "",
-      chargeSign: match[4] || ""
-    }
-  }
-  return {
-    body: value,
-    chargeDigits: "",
-    chargeSign: ""
-  }
-}
-
-const SUBSCRIPT_MAP = {
-  "0": "₀",
-  "1": "₁",
-  "2": "₂",
-  "3": "₃",
-  "4": "₄",
-  "5": "₅",
-  "6": "₆",
-  "7": "₇",
-  "8": "₈",
-  "9": "₉"
-}
-const SUPERSCRIPT_MAP = {
-  "0": "⁰",
-  "1": "¹",
-  "2": "²",
-  "3": "³",
-  "4": "⁴",
-  "5": "⁵",
-  "6": "⁶",
-  "7": "⁷",
-  "8": "⁸",
-  "9": "⁹",
-  "+": "⁺",
-  "-": "⁻"
-}
-
-function formatFormulaText(raw) {
-  const value = raw || ""
-  const parts = splitCharge(value)
-  let body = ""
-  for (let i = 0; i < parts.body.length; i += 1) {
-    const char = parts.body[i]
-    const prev = i > 0 ? parts.body[i - 1] : ""
-    const shouldSubscript = /[0-9]/.test(char) && (/[A-Za-z\)\]]/.test(prev) || /[0-9]/.test(prev))
-    body += shouldSubscript ? (SUBSCRIPT_MAP[char] || char) : char
-  }
-
-  let charge = ""
-  const chargeText = (parts.chargeDigits || "") + (parts.chargeSign || "")
-  for (let i = 0; i < chargeText.length; i += 1) {
-    const char = chargeText[i]
-    charge += SUPERSCRIPT_MAP[char] || char
-  }
-  return body + charge
-}
-
-function formatEquationSideText(side) {
-  const tokens = (side || "").split("+")
-  const result = []
-  for (let i = 0; i < tokens.length; i += 1) {
-    const token = tokens[i].trim()
-    if (!token) {
-      continue
-    }
-    const match = token.match(/^(\d+)(.*)$/)
-    if (match && match[2]) {
-      result.push(match[1] + formatFormulaText(match[2]))
-    } else {
-      result.push(formatFormulaText(token))
-    }
-  }
-  return result.join(" + ")
-}
 
 function estimateLineCount(text, charsPerLine) {
   const value = text || ""
@@ -212,18 +130,7 @@ export default {
   onInit() {
     this.touchStartX = null
     this.touchStartY = null
-    this.applyScreenLayout(createScreenLayout(this.screenWidth, this.screenHeight, "pill"))
-    device.getInfo({
-      success: (data) => {
-        if (data) {
-          this.applyScreenLayout(createScreenLayout(
-            data.screenWidth || this.screenWidth,
-            data.screenHeight || this.screenHeight,
-            data.screenShape || ""
-          ))
-        }
-      }
-    })
+    applyResponsiveLayout(this, "pill")
     this.loadSearchInputs()
   },
 
@@ -276,8 +183,8 @@ export default {
   applySearch(formula1, formula2) {
     this.searchFormula1 = formula1
     this.searchFormula2 = formula2
-    this.searchFormula1Display = formatFormulaText(formula1)
-    this.searchFormula2Display = formatFormulaText(formula2)
+    this.searchFormula1Display = formatInputFormula(formula1)
+    this.searchFormula2Display = formatInputFormula(formula2)
 
     if (!formula1 || !formula2) {
       this.rawSearchResults = []

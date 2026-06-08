@@ -14,7 +14,8 @@
     "release": "aiot release --enable-jsc",
     "check:layout": "node scripts/check_layout.mjs",
     "check:search": "node scripts/check_search.mjs",
-    "check": "npm run check:layout && npm run check:search",
+    "check:format": "node scripts/check_format.mjs",
+    "check": "npm run check:layout && npm run check:search && npm run check:format",
     "lint": "eslint --fix --ext .js \"src/**/*.js\" --no-error-on-unmatched-pattern"
   },
   "lint-staged": {
