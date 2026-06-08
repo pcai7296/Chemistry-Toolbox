@@ -49,13 +49,13 @@
           <div if="{{!numFlag}}" style="left: 3px; flex-direction: column;">
             <div static style="margin-left: 0px;margin-top: 0px;height: 60px;">
               <text class="calbtn66" for="{{item in keys['full'][0]}}" @click="onSelect(item)">{{item}}</text>
+              <text class="calbtn66" @click="onBtnClick('quickGroup')">{{quickKeyLabel}}</text>
             </div>
             <div static style="margin-left: 32px;margin-top: -5px;height: 60px;">
               <text class="calbtn66" for="{{item in keys['full'][1]}}" @click="onSelect(item)">{{item}}</text>
             </div>
             <div static style="margin-left: 64px;margin-top: -5px;height: 60px;">
               <text class="calbtn66" for="{{item in keys['full'][2]}}" @click="onSelect(item)">{{item}}</text>
-              <text class="calbtn66" @click="onBtnClick('quickGroup')">{{quickKeyLabel}}</text>
             </div>
           </div>
           <div else style="left: 3px; flex-direction: column;">

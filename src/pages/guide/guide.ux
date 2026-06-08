@@ -4,11 +4,12 @@
     <text class="guide-title" style="left: {{titleLeft}}px;width: {{titleWidth}}px;">使用说明</text>
     <list class="guide-list" style="left: {{cardLeft}}px;width: {{cardWidth}}px;height: {{guideListHeight}}px;">
       <list-item type="guide" for="{{guideItems}}" class="guide-item" style="height: {{$item.itemHeight}}px;">
-        <div class="guide-card" style="width: {{cardWidth}}px;height: {{$item.cardHeight}}px;">
-          <text class="guide-card-title" style="width: {{guideTextWidth}}px;">{{$item.title}}</text>
-          <text class="guide-card-body" style="width: {{guideTextWidth}}px;height: {{$item.bodyHeight}}px;">{{$item.body}}</text>
+        <div class="guide-card" style="width: {{cardWidth}}px;height: {{$item.cardHeight}}px;border-radius: {{guideCardRadius}}px;">
+          <text class="guide-card-title" style="width: {{guideTextWidth}}px;height: {{guideTitleLineHeight}}px;margin-left: {{guideCardPaddingX}}px;margin-top: {{guideCardPaddingTop}}px;font-size: {{guideTitleFontSize}}px;line-height: {{guideTitleLineHeight}}px;">{{$item.title}}</text>
+          <text class="guide-card-body" style="width: {{guideTextWidth}}px;height: {{$item.bodyHeight}}px;margin-left: {{guideCardPaddingX}}px;margin-top: {{guideBodyGap}}px;font-size: {{guideBodyFontSize}}px;line-height: {{guideBodyLineHeight}}px;">{{$item.body}}</text>
         </div>
       </list-item>
+      <list-item type="bottomSpacer" class="guide-bottom-spacer" style="height: {{guideBottomSpacerHeight}}px;"></list-item>
     </list>
   </div>
 </template>
@@ -40,21 +41,22 @@ const GUIDE_ITEMS = [
     body: "请尽量输入标准分子式。数据库仍在完善，如有错误或缺漏，可在关于页联系反馈。"
   }
 ]
+const BASE_GUIDE_CARD_WIDTH = 188
 
 function estimateLines(text, charsPerLine) {
   return Math.max(1, Math.ceil((text || "").length / charsPerLine))
 }
 
-function buildGuideItems(cardWidth) {
-  const charsPerLine = Math.max(12, Math.floor((cardWidth - 24) / 13))
+function buildGuideItems(metrics) {
+  const charsPerLine = Math.max(12, Math.floor(metrics.textWidth / Math.max(8, Math.floor(metrics.bodyFontSize))))
   return GUIDE_ITEMS.map((item) => {
     const bodyLines = estimateLines(item.body, charsPerLine)
-    const bodyHeight = bodyLines * 18
-    const cardHeight = 44 + bodyHeight
+    const bodyHeight = bodyLines * metrics.bodyLineHeight
+    const cardHeight = metrics.cardPaddingTop + metrics.titleLineHeight + metrics.bodyGap + bodyHeight + metrics.cardPaddingBottom
     return Object.assign({}, item, {
       bodyHeight,
       cardHeight,
-      itemHeight: cardHeight + 10
+      itemHeight: cardHeight + metrics.itemGap
     })
   })
 }
@@ -70,8 +72,27 @@ export default {
     cardLeft: 12,
     cardWidth: 188,
     guideTextWidth: 164,
+    guideCardRadius: 18,
+    guideCardPaddingX: 12,
+    guideCardPaddingTop: 8,
+    guideCardPaddingBottom: 10,
+    guideBodyGap: 4,
+    guideTitleFontSize: 16,
+    guideTitleLineHeight: 22,
+    guideBodyFontSize: 14,
+    guideBodyLineHeight: 19,
     guideListHeight: 370,
-    guideItems: buildGuideItems(188)
+    guideBottomSpacerHeight: 20,
+    guideItems: buildGuideItems({
+      textWidth: 164,
+      bodyFontSize: 14,
+      bodyLineHeight: 19,
+      titleLineHeight: 22,
+      cardPaddingTop: 8,
+      cardPaddingBottom: 10,
+      bodyGap: 4,
+      itemGap: 10
+    })
   },
 
   onInit() {
@@ -79,17 +100,41 @@ export default {
   },
 
   applyScreenLayout(layout) {
+    const isPill = layout.shape === "pill"
+    const guideCardWidth = isPill
+      ? layout.cardWidth
+      : Math.max(layout.cardWidth, Math.floor(layout.screenWidth * (layout.shape === "round" ? 0.76 : 0.84)))
+    const guideScale = isPill ? 1 : guideCardWidth / BASE_GUIDE_CARD_WIDTH
     this.screenWidth = layout.screenWidth
     this.screenHeight = layout.screenHeight
     this.topButtonLeft = layout.topButtonLeft
     this.topButtonWidth = layout.topButtonWidth
     this.titleLeft = Math.floor((layout.screenWidth - 120) / 2)
     this.titleWidth = 120
-    this.cardLeft = layout.cardLeft
-    this.cardWidth = layout.cardWidth
-    this.guideTextWidth = Math.max(136, layout.cardWidth - 24)
+    this.cardLeft = Math.floor((layout.screenWidth - guideCardWidth) / 2)
+    this.cardWidth = guideCardWidth
+    this.guideCardRadius = Math.floor(18 * guideScale)
+    this.guideCardPaddingX = Math.floor(12 * guideScale)
+    this.guideCardPaddingTop = Math.floor(8 * guideScale)
+    this.guideCardPaddingBottom = Math.floor(10 * guideScale)
+    this.guideBodyGap = Math.floor(4 * guideScale)
+    this.guideTitleFontSize = Math.floor(16 * guideScale)
+    this.guideTitleLineHeight = Math.floor(22 * guideScale)
+    this.guideBodyFontSize = Math.floor(14 * guideScale)
+    this.guideBodyLineHeight = Math.floor(19 * guideScale)
+    this.guideTextWidth = Math.max(136, guideCardWidth - this.guideCardPaddingX * 2)
     this.guideListHeight = layout.guideListHeight
-    this.guideItems = buildGuideItems(layout.cardWidth)
+    this.guideBottomSpacerHeight = isPill ? 20 : 0
+    this.guideItems = buildGuideItems({
+      textWidth: this.guideTextWidth,
+      bodyFontSize: this.guideBodyFontSize,
+      bodyLineHeight: this.guideBodyLineHeight,
+      titleLineHeight: this.guideTitleLineHeight,
+      cardPaddingTop: this.guideCardPaddingTop,
+      cardPaddingBottom: this.guideCardPaddingBottom,
+      bodyGap: this.guideBodyGap,
+      itemGap: Math.floor(10 * guideScale)
+    })
   },
 
   goBack() {

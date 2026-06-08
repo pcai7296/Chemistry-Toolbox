@@ -1,18 +1,17 @@
 <template>
-  <div class="page" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
-    <list class="results-listview" if="{{visibleResults.length > 0}}" style="left: {{cardLeft}}px;width: {{cardWidth}}px;height: {{screenHeight}}px;padding: {{resultsListTopPadding}}px 0px {{resultsListBottomPadding}}px;">
+  <div class="page" @touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
+    <list id="resultsList" class="results-listview" if="{{visibleResults.length > 0}}" style="left: {{cardLeft}}px;width: {{cardWidth}}px;height: {{screenHeight}}px;padding: {{resultsListTopPadding}}px 0px {{resultsListBottomPadding}}px;">
       <list-item type="tip" class="results-tip-item">
         <text class="results-subtitle">同时包含这两个分子式的方程式</text>
       </list-item>
       <list-item type="result" for="{{visibleResults}}" class="result-card-item" style="height: {{$item.itemHeight}}px;">
-        <div class="result-card" style="height: {{$item.cardHeight}}px;">
-          <text class="result-equation-side" style="height: {{$item.leftTextHeight}}px;">{{$item.leftDisplay}}</text>
-          <text class="result-equation-arrow">→</text>
-          <text class="result-equation-side" style="height: {{$item.rightTextHeight}}px;">{{$item.rightDisplay}}</text>
-          <text class="result-meta" if="{{$item.type}}">类型：{{$item.type}}</text>
-          <text class="result-meta" if="{{$item.conditions}}">条件：{{$item.conditions}}</text>
-          <text class="result-meta" if="{{$item.phenomenon}}">现象：{{$item.phenomenon}}</text>
-          <text class="result-meta" if="{{!$item.type && !$item.conditions && !$item.phenomenon}}">已导入方程式库，暂无补充说明</text>
+        <div class="result-card" style="height: {{$item.cardHeight}}px;padding: {{resultCardPaddingY}}px {{resultCardPaddingX}}px;border-radius: {{resultCardRadius}}px;">
+          <text class="result-equation-side" style="height: {{$item.leftTextHeight}}px;font-size: {{resultSideFontSize}}px;line-height: {{resultSideLineHeight}}px;">{{$item.leftDisplay}}</text>
+          <text class="result-equation-arrow" style="font-size: {{resultArrowFontSize}}px;line-height: {{resultArrowLineHeight}}px;">→</text>
+          <text class="result-equation-side" style="height: {{$item.rightTextHeight}}px;font-size: {{resultSideFontSize}}px;line-height: {{resultSideLineHeight}}px;">{{$item.rightDisplay}}</text>
+          <text class="result-meta" if="{{$item.type}}" style="font-size: {{resultMetaFontSize}}px;line-height: {{resultMetaLineHeight}}px;">类型：{{$item.type}}</text>
+          <text class="result-meta" if="{{$item.conditions}}" style="font-size: {{resultMetaFontSize}}px;line-height: {{resultMetaLineHeight}}px;">条件：{{$item.conditions}}</text>
+          <text class="result-meta" if="{{$item.phenomenon}}" style="font-size: {{resultMetaFontSize}}px;line-height: {{resultMetaLineHeight}}px;">现象：{{$item.phenomenon}}</text>
         </div>
       </list-item>
     </list>
@@ -22,7 +21,7 @@
       <text class="results-title" style="left: {{titleLeft}}px;width: {{titleWidth}}px;">查询结果</text>
       <text class="results-query" style="left: {{queryLeft}}px;width: {{queryWidth}}px;">{{searchFormula1Display}} + {{searchFormula2Display}}</text>
     </div>
-    <div class="results-pagination" if="{{totalPages > 1}}" style="left: {{paginationLeft}}px;width: {{paginationWidth}}px;bottom: {{bottomSafe}}px;">
+    <div class="results-pagination" if="{{totalPages > 1}}" style="left: {{paginationLeft + paginationDragOffset}}px;width: {{paginationWidth}}px;bottom: {{bottomSafe}}px;">
       <div class="page-button {{currentPage <= 0 ? 'page-button-disabled' : ''}}" style="width: {{pageButtonWidth}}px;" @click="prevPage">
         <text class="page-button-text">上一页</text>
       </div>
@@ -46,12 +45,15 @@ const STORAGE_KEY_SEARCH_LEFT = "CHEMISTRY_TOOLBOX_SEARCH_LEFT"
 const STORAGE_KEY_SEARCH_RIGHT = "CHEMISTRY_TOOLBOX_SEARCH_RIGHT"
 const RESULTS_PER_PAGE = 4
 const SWIPE_DISTANCE = 72
-const SIDE_LINE_HEIGHT = 26
-const META_LINE_HEIGHT = 22
-const CARD_VERTICAL_PADDING = 20
+const PAGINATION_DRAG_LIMIT = 24
+const PAGINATION_DRAG_ZONE_HEIGHT = 84
+const BASE_CARD_WIDTH = 188
 const CARD_BOTTOM_GAP = 10
-const ARROW_HEIGHT = 30
 const MIN_CARD_HEIGHT = 116
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value))
+}
 
 function estimateLineCount(text, charsPerLine) {
   const value = text || ""
@@ -72,21 +74,22 @@ function getMetaLineCount(item, charsPerLine) {
   if (item.phenomenon) {
     count += estimateLineCount("现象：" + item.phenomenon, charsPerLine)
   }
-  return count || 1
+  return count
 }
 
-function withMeasuredLayout(item, cardWidth) {
-  const charsPerLine = Math.max(14, Math.floor((cardWidth - 24) / 10))
-  const metaCharsPerLine = Math.max(12, Math.floor((cardWidth - 24) / 9))
+function withMeasuredLayout(item, metrics) {
+  const textWidth = metrics.cardWidth - metrics.cardPaddingX * 2
+  const charsPerLine = Math.max(14, Math.floor(textWidth / Math.max(8, Math.floor(metrics.sideFontSize * 0.56))))
+  const metaCharsPerLine = Math.max(12, Math.floor(textWidth / Math.max(7, Math.floor(metrics.metaFontSize * 0.62))))
   const leftLines = estimateLineCount(item.leftDisplay, charsPerLine)
   const rightLines = estimateLineCount(item.rightDisplay, charsPerLine)
   const metaLines = getMetaLineCount(item, metaCharsPerLine)
-  const leftTextHeight = leftLines * SIDE_LINE_HEIGHT
-  const rightTextHeight = rightLines * SIDE_LINE_HEIGHT
-  const metaHeight = metaLines * META_LINE_HEIGHT
+  const leftTextHeight = leftLines * metrics.sideLineHeight
+  const rightTextHeight = rightLines * metrics.sideLineHeight
+  const metaHeight = metaLines * metrics.metaLineHeight
   const cardHeight = Math.max(
-    MIN_CARD_HEIGHT,
-    CARD_VERTICAL_PADDING + leftTextHeight + ARROW_HEIGHT + rightTextHeight + metaHeight
+    metrics.minCardHeight,
+    metrics.cardPaddingY * 2 + leftTextHeight + metrics.arrowHeight + rightTextHeight + metaHeight
   )
   return Object.assign({}, item, {
     leftTextHeight,
@@ -110,6 +113,7 @@ export default {
     emptyMessage: "没有找到同时包含这两个分子式的方程式",
     screenWidth: 212,
     screenHeight: 520,
+    screenShape: "pill",
     cardLeft: 12,
     cardWidth: 188,
     headerHeight: 124,
@@ -121,25 +125,45 @@ export default {
     queryWidth: 176,
     paginationLeft: 12,
     paginationWidth: 240,
+    paginationDragOffset: 0,
     pageButtonWidth: 74,
     pageIndicatorWidth: 92,
     bottomSafe: 10,
     resultsListTopPadding: 132,
-    resultsListBottomPadding: 62
+    resultsListBottomPadding: 62,
+    resultCardPaddingX: 12,
+    resultCardPaddingY: 10,
+    resultCardRadius: 18,
+    resultSideFontSize: 18,
+    resultSideLineHeight: 26,
+    resultArrowFontSize: 18,
+    resultArrowLineHeight: 24,
+    resultMetaFontSize: 14,
+    resultMetaLineHeight: 22,
+    resultMinCardHeight: 116,
+    resultArrowHeight: 30
   },
 
   onInit() {
     this.touchStartX = null
     this.touchStartY = null
+    this.isPaginationDragging = false
+    this.paginationDragStartOffset = 0
     applyResponsiveLayout(this, device, "pill")
     this.loadSearchInputs()
   },
 
   applyScreenLayout(layout) {
+    const isPill = layout.shape === "pill"
+    const resultCardWidth = isPill
+      ? layout.cardWidth
+      : Math.max(layout.cardWidth, Math.floor(layout.screenWidth * (layout.shape === "round" ? 0.76 : 0.84)))
+    const resultScale = isPill ? 1 : resultCardWidth / BASE_CARD_WIDTH
     this.screenWidth = layout.screenWidth
     this.screenHeight = layout.screenHeight
-    this.cardLeft = layout.cardLeft
-    this.cardWidth = layout.cardWidth
+    this.screenShape = layout.shape
+    this.cardLeft = Math.floor((layout.screenWidth - resultCardWidth) / 2)
+    this.cardWidth = resultCardWidth
     this.headerHeight = layout.headerHeight
     this.topButtonLeft = layout.topButtonLeft
     this.topButtonWidth = layout.topButtonWidth
@@ -149,11 +173,25 @@ export default {
     this.queryWidth = layout.queryWidth
     this.paginationLeft = layout.paginationLeft
     this.paginationWidth = layout.paginationWidth
+    if (!isPill) {
+      this.paginationDragOffset = 0
+    }
     this.pageButtonWidth = layout.pageButtonWidth
     this.pageIndicatorWidth = layout.pageIndicatorWidth
     this.bottomSafe = layout.bottomSafe
     this.resultsListTopPadding = layout.resultsListTopPadding
     this.resultsListBottomPadding = 52 + layout.bottomSafe
+    this.resultCardPaddingX = Math.floor(12 * resultScale)
+    this.resultCardPaddingY = Math.floor(10 * resultScale)
+    this.resultCardRadius = Math.floor(18 * resultScale)
+    this.resultSideFontSize = Math.floor(18 * resultScale)
+    this.resultSideLineHeight = Math.floor(26 * resultScale)
+    this.resultArrowFontSize = Math.floor(18 * resultScale)
+    this.resultArrowLineHeight = Math.floor(24 * resultScale)
+    this.resultMetaFontSize = Math.floor(14 * resultScale)
+    this.resultMetaLineHeight = Math.floor(22 * resultScale)
+    this.resultMinCardHeight = Math.floor(MIN_CARD_HEIGHT * resultScale)
+    this.resultArrowHeight = Math.floor(30 * resultScale)
     if (this.rawSearchResults.length > 0) {
       this.rebuildMeasuredResults()
     }
@@ -206,6 +244,17 @@ export default {
   },
 
   rebuildMeasuredResults() {
+    const metrics = {
+      cardWidth: this.cardWidth,
+      cardPaddingX: this.resultCardPaddingX,
+      cardPaddingY: this.resultCardPaddingY,
+      sideFontSize: this.resultSideFontSize,
+      sideLineHeight: this.resultSideLineHeight,
+      arrowHeight: this.resultArrowHeight,
+      metaFontSize: this.resultMetaFontSize,
+      metaLineHeight: this.resultMetaLineHeight,
+      minCardHeight: this.resultMinCardHeight
+    }
     this.searchResults = this.rawSearchResults.map((item) => {
       const equation = item.equation || ""
       const parts = equation.split("->")
@@ -218,7 +267,7 @@ export default {
         phenomenon: item.phenomenon || "",
         leftDisplay: formatEquationSideText(left),
         rightDisplay: formatEquationSideText(right)
-      }, this.cardWidth)
+      }, metrics)
     })
     this.totalPages = Math.max(1, Math.ceil(this.searchResults.length / RESULTS_PER_PAGE))
     this.updateVisibleResults()
@@ -229,12 +278,25 @@ export default {
     this.visibleResults = this.searchResults.slice(start, start + RESULTS_PER_PAGE)
   },
 
+  scrollResultsToTop() {
+    setTimeout(() => {
+      if (this.$element("resultsList")) {
+        this.$element("resultsList").scrollTo({
+          top: 0,
+          left: 0,
+          behavior: "smooth"
+        })
+      }
+    }, 0)
+  },
+
   nextPage() {
     if (this.currentPage >= this.totalPages - 1) {
       return
     }
     this.currentPage += 1
     this.updateVisibleResults()
+    this.scrollResultsToTop()
   },
 
   prevPage() {
@@ -243,11 +305,30 @@ export default {
     }
     this.currentPage -= 1
     this.updateVisibleResults()
+    this.scrollResultsToTop()
   },
 
   handleTouchStart(eve) {
     this.touchStartX = this.getPoint(eve, "x")
     this.touchStartY = this.getPoint(eve, "y")
+    this.isPaginationDragging = this.isPillScreen() && this.isPaginationTouchArea(this.touchStartY) && this.totalPages > 1
+    this.paginationDragStartOffset = this.paginationDragOffset
+  },
+
+  handleTouchMove(eve) {
+    if (!this.isPaginationDragging || this.touchStartX === null) {
+      return
+    }
+    const currentX = this.getPoint(eve, "x")
+    if (currentX === null) {
+      return
+    }
+    const deltaX = currentX - this.touchStartX
+    this.paginationDragOffset = clamp(
+      this.paginationDragStartOffset + deltaX,
+      -PAGINATION_DRAG_LIMIT,
+      PAGINATION_DRAG_LIMIT
+    )
   },
 
   handleTouchEnd(eve) {
@@ -261,6 +342,13 @@ export default {
     const deltaY = (endY || 0) - (this.touchStartY || 0)
     const absX = Math.abs(deltaX)
     const absY = Math.abs(deltaY)
+    if (this.isPaginationDragging) {
+      this.isPaginationDragging = false
+      this.touchStartX = null
+      this.touchStartY = null
+      return
+    }
+
     if (absX >= SWIPE_DISTANCE && absX > absY) {
       if (deltaX <= -SWIPE_DISTANCE) {
         this.nextPage()
@@ -271,6 +359,17 @@ export default {
 
     this.touchStartX = null
     this.touchStartY = null
+  },
+
+  isPillScreen() {
+    return this.screenShape === "pill"
+  },
+
+  isPaginationTouchArea(y) {
+    if (typeof y !== "number") {
+      return false
+    }
+    return y >= this.screenHeight - this.bottomSafe - PAGINATION_DRAG_ZONE_HEIGHT
   },
 
   getPoint(eve, axis) {
