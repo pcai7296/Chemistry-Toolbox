@@ -1,16 +1,55 @@
 <template>
   <div class="sponsor-page">
-    <text class="sponsor-back" @click="goBack">返回</text>
-    <div class="sponsor-code-wrap">
-      <img class="sponsor-code" src="/common/sponsor-code.png" />
+    <text class="sponsor-back" style="left: {{topButtonLeft}}px;width: {{topButtonWidth}}px;" @click="goBack">返回</text>
+    <div class="sponsor-code-wrap" style="left: {{qrLeft}}px;top: {{qrTop}}px;width: {{qrSize}}px;height: {{qrSize}}px;">
+      <img class="sponsor-code" style="width: {{qrImageSize}}px;height: {{qrImageSize}}px;" src="/common/sponsor-code.png" />
     </div>
   </div>
 </template>
 
 <script>
 import router from "@system.router"
+import device from "@system.device"
+import { createScreenLayout } from "../../services/screenProfile.js"
 
 export default {
+  private: {
+    screenWidth: 212,
+    screenHeight: 520,
+    topButtonLeft: 66,
+    topButtonWidth: 80,
+    qrLeft: 16,
+    qrTop: 165,
+    qrSize: 180,
+    qrImageSize: 170
+  },
+
+  onInit() {
+    this.applyScreenLayout(createScreenLayout(this.screenWidth, this.screenHeight, "pill"))
+    device.getInfo({
+      success: (data) => {
+        if (data) {
+          this.applyScreenLayout(createScreenLayout(
+            data.screenWidth || this.screenWidth,
+            data.screenHeight || this.screenHeight,
+            data.screenShape || ""
+          ))
+        }
+      }
+    })
+  },
+
+  applyScreenLayout(layout) {
+    this.screenWidth = layout.screenWidth
+    this.screenHeight = layout.screenHeight
+    this.topButtonLeft = layout.topButtonLeft
+    this.topButtonWidth = layout.topButtonWidth
+    this.qrSize = layout.qrSize
+    this.qrImageSize = Math.max(120, layout.qrSize - 10)
+    this.qrLeft = layout.qrLeft
+    this.qrTop = layout.qrTop
+  },
+
   goBack() {
     router.back()
   }
@@ -26,9 +65,7 @@ export default {
 
 .sponsor-back {
   position: absolute;
-  left: 66px;
   top: 18px;
-  width: 80px;
   height: 44px;
   color: #ffffff;
   font-size: 20px;
@@ -42,10 +79,6 @@ export default {
 
 .sponsor-code-wrap {
   position: absolute;
-  left: 11px;
-  top: 165px;
-  width: 190px;
-  height: 190px;
   border-radius: 18px;
   background-color: #ffffff;
   align-items: center;
@@ -53,8 +86,6 @@ export default {
 }
 
 .sponsor-code {
-  width: 180px;
-  height: 180px;
   object-fit: contain;
 }
 </style>

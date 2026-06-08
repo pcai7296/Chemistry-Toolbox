@@ -1,26 +1,28 @@
 <template>
   <div class="about-page">
-    <text class="about-back" @click="goBack">返回</text>
-    <div class="about-panel">
+    <text class="about-back" style="left: {{topButtonLeft}}px;width: {{topButtonWidth}}px;" @click="goBack">返回</text>
+    <div class="about-panel" style="left: {{cardLeft}}px;width: {{cardWidth}}px;">
       <img class="about-logo" src="/common/logo.png" />
       <text class="about-title">化学工具箱</text>
-      <text class="about-version">v{{appVersion}}</text>
-      <text class="about-developer-label">开发者</text>
-      <text class="about-developer-name">{{developerName}}</text>
+      <text class="about-version" style="width: {{cardWidth}}px;">v{{appVersion}}</text>
+      <text class="about-developer-label" style="width: {{cardWidth}}px;">开发者</text>
+      <text class="about-developer-name" style="width: {{cardWidth}}px;">{{developerName}}</text>
     </div>
-    <div class="about-info-panel">
-      <text class="about-note about-note-one">资源来源于网络，侵权必删</text>
-      <text class="about-note about-note-two">项目地址（不一定开放）</text>
-      <text class="about-note about-note-three">[{{projectRepo}}]({{projectUrl}})</text>
-      <text class="about-note about-note-four">如有建议和反馈请联系</text>
-      <text class="about-note about-note-five">18938087296@163.com</text>
-      <text class="about-note about-note-six">1992976096@qq.com</text>
+    <div class="about-info-panel" style="left: {{cardLeft}}px;top: {{aboutInfoTop}}px;width: {{cardWidth}}px;">
+      <text class="about-note about-note-one" style="width: {{noteWidth}}px;">资源来源于网络，侵权必删</text>
+      <text class="about-note about-note-two" style="width: {{noteWidth}}px;">项目地址（不一定开放）</text>
+      <text class="about-note about-note-three" style="width: {{noteWidth}}px;">[{{projectRepo}}]({{projectUrl}})</text>
+      <text class="about-note about-note-four" style="width: {{noteWidth}}px;">如有建议和反馈请联系</text>
+      <text class="about-note about-note-five" style="width: {{noteWidth}}px;">18938087296@163.com</text>
+      <text class="about-note about-note-six" style="width: {{noteWidth}}px;">1992976096@qq.com</text>
     </div>
   </div>
 </template>
 
 <script>
 import router from "@system.router"
+import device from "@system.device"
+import { createScreenLayout } from "../../services/screenProfile.js"
 import {
   APP_VERSION,
   DEVELOPER_NAME,
@@ -33,7 +35,41 @@ export default {
     appVersion: APP_VERSION,
     developerName: DEVELOPER_NAME,
     projectRepo: PROJECT_REPO,
-    projectUrl: PROJECT_URL
+    projectUrl: PROJECT_URL,
+    screenWidth: 212,
+    screenHeight: 520,
+    topButtonLeft: 66,
+    topButtonWidth: 80,
+    cardLeft: 16,
+    cardWidth: 180,
+    noteWidth: 164,
+    aboutInfoTop: 270
+  },
+
+  onInit() {
+    this.applyScreenLayout(createScreenLayout(this.screenWidth, this.screenHeight, "pill"))
+    device.getInfo({
+      success: (data) => {
+        if (data) {
+          this.applyScreenLayout(createScreenLayout(
+            data.screenWidth || this.screenWidth,
+            data.screenHeight || this.screenHeight,
+            data.screenShape || ""
+          ))
+        }
+      }
+    })
+  },
+
+  applyScreenLayout(layout) {
+    this.screenWidth = layout.screenWidth
+    this.screenHeight = layout.screenHeight
+    this.topButtonLeft = layout.topButtonLeft
+    this.topButtonWidth = layout.topButtonWidth
+    this.cardLeft = layout.cardLeft
+    this.cardWidth = layout.cardWidth
+    this.noteWidth = Math.max(140, layout.cardWidth - 16)
+    this.aboutInfoTop = layout.aboutInfoTop
   },
 
   goBack() {
@@ -51,9 +87,7 @@ export default {
 
 .about-back {
   position: absolute;
-  left: 66px;
   top: 18px;
-  width: 80px;
   height: 44px;
   color: #ffffff;
   font-size: 20px;
@@ -67,9 +101,7 @@ export default {
 
 .about-panel {
   position: absolute;
-  left: 16px;
   top: 82px;
-  width: 180px;
   height: 178px;
   border-radius: 22px;
   background-color: #e3eee9;
@@ -102,7 +134,6 @@ export default {
   position: absolute;
   left: 0px;
   top: 66px;
-  width: 180px;
   height: 34px;
   color: #244238;
   font-size: 24px;
@@ -115,7 +146,6 @@ export default {
   position: absolute;
   left: 0px;
   top: 108px;
-  width: 180px;
   height: 22px;
   color: #6a7b74;
   font-size: 14px;
@@ -127,7 +157,6 @@ export default {
   position: absolute;
   left: 0px;
   top: 132px;
-  width: 180px;
   height: 28px;
   color: #16231f;
   font-size: 18px;
@@ -139,7 +168,6 @@ export default {
 .about-note {
   position: absolute;
   left: 8px;
-  width: 172px;
   color: #4f5f59;
   font-size: 14px;
   line-height: 20px;
@@ -148,9 +176,6 @@ export default {
 
 .about-info-panel {
   position: absolute;
-  left: 12px;
-  top: 270px;
-  width: 188px;
   height: 154px;
   border-radius: 18px;
   background-color: #ffffff;

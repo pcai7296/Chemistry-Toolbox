@@ -1,12 +1,12 @@
 <template>
   <div class="guide-page">
-    <text class="guide-back" @click="goBack">返回</text>
-    <text class="guide-title">使用说明</text>
-    <list class="guide-list">
+    <text class="guide-back" style="left: {{topButtonLeft}}px;width: {{topButtonWidth}}px;" @click="goBack">返回</text>
+    <text class="guide-title" style="left: {{titleLeft}}px;width: {{titleWidth}}px;">使用说明</text>
+    <list class="guide-list" style="left: {{cardLeft}}px;width: {{cardWidth}}px;height: {{guideListHeight}}px;">
       <list-item type="guide" for="{{guideItems}}" class="guide-item" style="height: {{$item.itemHeight}}px;">
-        <div class="guide-card" style="height: {{$item.cardHeight}}px;">
-          <text class="guide-card-title">{{$item.title}}</text>
-          <text class="guide-card-body" style="height: {{$item.bodyHeight}}px;">{{$item.body}}</text>
+        <div class="guide-card" style="width: {{cardWidth}}px;height: {{$item.cardHeight}}px;">
+          <text class="guide-card-title" style="width: {{guideTextWidth}}px;">{{$item.title}}</text>
+          <text class="guide-card-body" style="width: {{guideTextWidth}}px;height: {{$item.bodyHeight}}px;">{{$item.body}}</text>
         </div>
       </list-item>
     </list>
@@ -15,6 +15,8 @@
 
 <script>
 import router from "@system.router"
+import device from "@system.device"
+import { createScreenLayout } from "../../services/screenProfile.js"
 
 const GUIDE_ITEMS = [
   {
@@ -39,13 +41,14 @@ const GUIDE_ITEMS = [
   }
 ]
 
-function estimateLines(text) {
-  return Math.max(1, Math.ceil((text || "").length / 16))
+function estimateLines(text, charsPerLine) {
+  return Math.max(1, Math.ceil((text || "").length / charsPerLine))
 }
 
-function buildGuideItems() {
+function buildGuideItems(cardWidth) {
+  const charsPerLine = Math.max(12, Math.floor((cardWidth - 24) / 13))
   return GUIDE_ITEMS.map((item) => {
-    const bodyLines = estimateLines(item.body)
+    const bodyLines = estimateLines(item.body, charsPerLine)
     const bodyHeight = bodyLines * 18
     const cardHeight = 44 + bodyHeight
     return Object.assign({}, item, {
@@ -58,7 +61,46 @@ function buildGuideItems() {
 
 export default {
   private: {
-    guideItems: buildGuideItems()
+    screenWidth: 212,
+    screenHeight: 520,
+    topButtonLeft: 66,
+    topButtonWidth: 80,
+    titleLeft: 46,
+    titleWidth: 120,
+    cardLeft: 12,
+    cardWidth: 188,
+    guideTextWidth: 164,
+    guideListHeight: 370,
+    guideItems: buildGuideItems(188)
+  },
+
+  onInit() {
+    this.applyScreenLayout(createScreenLayout(this.screenWidth, this.screenHeight, "pill"))
+    device.getInfo({
+      success: (data) => {
+        if (data) {
+          this.applyScreenLayout(createScreenLayout(
+            data.screenWidth || this.screenWidth,
+            data.screenHeight || this.screenHeight,
+            data.screenShape || ""
+          ))
+        }
+      }
+    })
+  },
+
+  applyScreenLayout(layout) {
+    this.screenWidth = layout.screenWidth
+    this.screenHeight = layout.screenHeight
+    this.topButtonLeft = layout.topButtonLeft
+    this.topButtonWidth = layout.topButtonWidth
+    this.titleLeft = Math.floor((layout.screenWidth - 120) / 2)
+    this.titleWidth = 120
+    this.cardLeft = layout.cardLeft
+    this.cardWidth = layout.cardWidth
+    this.guideTextWidth = Math.max(136, layout.cardWidth - 24)
+    this.guideListHeight = layout.guideListHeight
+    this.guideItems = buildGuideItems(layout.cardWidth)
   },
 
   goBack() {
@@ -76,9 +118,7 @@ export default {
 
 .guide-back {
   position: absolute;
-  left: 66px;
   top: 14px;
-  width: 80px;
   height: 44px;
   color: #ffffff;
   font-size: 20px;
@@ -92,9 +132,7 @@ export default {
 
 .guide-title {
   position: absolute;
-  left: 46px;
   top: 62px;
-  width: 120px;
   height: 36px;
   color: #16231f;
   font-size: 26px;
@@ -105,18 +143,14 @@ export default {
 
 .guide-list {
   position: absolute;
-  left: 12px;
-  width: 188px;
   top: 108px;
-  height: 370px;
 }
 
 .guide-item {
-  width: 188px;
+  width: 100%;
 }
 
 .guide-card {
-  width: 188px;
   border-radius: 18px;
   background-color: #ffffff;
   border: 2px solid #d7e2dd;
@@ -124,7 +158,6 @@ export default {
 }
 
 .guide-card-title {
-  width: 164px;
   height: 22px;
   margin-left: 12px;
   margin-top: 8px;
@@ -136,7 +169,6 @@ export default {
 }
 
 .guide-card-body {
-  width: 164px;
   margin-left: 12px;
   margin-top: 4px;
   color: #4f5f59;

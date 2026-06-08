@@ -2,18 +2,18 @@
   <div class="chem-root" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
     <div class="home-view" if="{{!isEditing}}">
       <text class="home-title">化学工具箱</text>
-      <div class="home-input" @click="openEditor">
+      <div class="home-input" style="width: {{contentWidth}}px;" @click="openEditor">
         <text class="home-input-text" if="{{savedText1}}">{{savedText1Display}}</text>
         <text static class="home-placeholder" if="{{!savedText1}}">点击输入</text>
       </div>
-      <div class="home-input second-input" @click="openSecondEditor">
+      <div class="home-input second-input" style="width: {{contentWidth}}px;" @click="openSecondEditor">
         <text class="home-input-text" if="{{savedText2}}">{{savedText2Display}}</text>
         <text static class="home-placeholder" if="{{!savedText2}}">点击输入</text>
       </div>
       <div class="search-button" @click="searchEquations">
         <text class="search-button-text">搜索</text>
       </div>
-      <div class="secondary-actions">
+      <div class="secondary-actions" style="width: {{narrowWidth}}px;">
         <div class="sponsor-button" @click="openSponsor">
           <text class="sponsor-button-text">赞助</text>
         </div>
@@ -21,7 +21,7 @@
           <text class="about-button-text">关于</text>
         </div>
       </div>
-      <div class="guide-button" @click="openGuide">
+      <div class="guide-button" style="width: {{narrowWidth}}px;" @click="openGuide">
         <text class="guide-button-text">使用说明</text>
       </div>
       <text class="home-hint" if="{{homeMessage}}">{{homeMessage}}</text>
@@ -45,8 +45,7 @@
 
     <div class="keyboard-page" if="{{isEditing && !hideKeyboard}}">
       <div class="keyboard-bg">
-        <progress percent="{{30 + percent66}}" type="arc" class="arc-progress" style="margin-left: {{(screenWidth - 192) / 2}}px;"></progress>
-        <scroll id="keyboard66" scroll-x="{{true}}" onscroll="handelScroll" style="padding-left: {{(screenWidth - 192) / 2}}px;padding-right: {{(screenWidth - 192) / 2}}px;">
+        <scroll id="keyboard66" scroll-x="{{true}}" onscroll="handelScroll" style="padding-left: {{keyboardKeyPaddingLeft}}px;padding-right: {{keyboardKeyPaddingRight}}px;">
           <div if="{{!numFlag}}" style="left: 3px; flex-direction: column;">
             <div static style="margin-left: 0px;margin-top: 0px;height: 60px;">
               <text class="calbtn66" for="{{item in keys['full'][0]}}" @click="onSelect(item)">{{item}}</text>
@@ -73,21 +72,21 @@
         </scroll>
       </div>
 
-      <div static class="arc-topbar" style="left: {{(screenWidth - 192) / 2}}px;">
-        <img static class="arc-search" src="/components/InputMethod/assets/arc/search.png" />
-        <scroll id="formulaPreview" scroll-x="{{true}}" class="candidate-scroll">
-          <div style="position: absolute;left: 0px;top: 0px;height: 42px;padding-right:20px">
-            <text class="calbtn02 formula-preview">{{draftDisplay || topHint}}</text>
+      <div static class="arc-topbar" style="left: {{keyboardTopbarLeft}}px;width: {{keyboardTopbarWidth}}px;">
+        <img static class="arc-search" src="/components/InputMethod/assets/arc/search.png" style="left: {{keyboardSearchLeft}}px;width: {{keyboardSearchWidth}}px;" />
+        <scroll id="formulaPreview" scroll-x="{{true}}" class="candidate-scroll" style="left: {{keyboardPreviewLeft}}px;width: {{keyboardPreviewWidth}}px;">
+          <div style="position: absolute;left: {{previewMarqueeLeft}}px;top: 0px;height: 42px;width: {{previewMarqueeContentWidth}}px;padding-right:20px">
+            <text class="calbtn02 formula-preview" style="width: {{previewMarqueeContentWidth}}px;">{{draftDisplay || topHint}}</text>
           </div>
         </scroll>
-        <img show="{{panelRows.length > 0}}" class="candidate-more" src="/components/InputMethod/assets/arc/down2.png" @click="onBtnClick('down')" />
-        <div class="icon-btn icon-lang" @click="onPrimaryTopAction">
+        <img show="{{panelRows.length > 0}}" class="candidate-more" src="/components/InputMethod/assets/arc/down2.png" style="left: {{keyboardMoreLeft}}px;" @click="onBtnClick('down')" />
+        <div class="icon-btn icon-lang" style="left: {{keyboardGroupLeft}}px;width: {{keyboardGroupWidth}}px;" @click="onPrimaryTopAction">
           <text class="top-btn-text">{{topLeftLabel}}</text>
         </div>
-        <div class="icon-btn icon-num" @click="onSecondaryTopAction">
+        <div class="icon-btn icon-num" style="left: {{keyboardNumberLeft}}px;width: {{keyboardNumberWidth}}px;" @click="onSecondaryTopAction">
           <text class="top-btn-text">{{topMiddleLabel}}</text>
         </div>
-        <div class="icon-btn icon-del" @click="onBtnClick('D')">
+        <div class="icon-btn icon-del" style="left: {{keyboardDeleteLeft}}px;width: {{keyboardDeleteWidth}}px;" @click="onBtnClick('D')">
           <img src="/components/InputMethod/assets/arc/del.png" class="icon-img" />
         </div>
       </div>
@@ -113,6 +112,7 @@ import storage from "@system.storage"
 import vibrator from "@system.vibrator"
 import device from "@system.device"
 import router from "@system.router"
+import { createScreenLayout } from "../../services/screenProfile.js"
 
 const STORAGE_KEY_1 = "CHEMISTRY_TOOLBOX_HOME_TEXT_1"
 const STORAGE_KEY_2 = "CHEMISTRY_TOOLBOX_HOME_TEXT_2"
@@ -123,9 +123,9 @@ const EXIT_SWIPE_DISTANCE = 58
 const EXIT_SWIPE_MAX_Y_DRIFT = 70
 
 const ELEMENT_KEYS = [
-  ["H", "O", "C", "N", "S", "P", "K", "Na", "Cl", "Ca"],
-  ["Mg", "Al", "Zn", "Fe", "Cu", "Ag", "Ba", "Si", "Br"],
-  ["Li", "Be", "B", "F", "I", "Cr", "Mn", "Pb", "Hg", "As", "Ti", "Sn", "Rb"]
+  ["H", "O", "C", "N", "S", "P", "K", "Na", "Cl", "Ca", "As"],
+  ["Mg", "Al", "Zn", "Fe", "Cu", "Ag", "Ba", "Si", "Br", "Ti", "Sn"],
+  ["Li", "Be", "B", "F", "I", "Cr", "Mn", "Pb", "Hg", "Rb"]
 ]
 
 const NUMBER_KEYS = [
@@ -269,6 +269,29 @@ function formatDisplayFormula(raw) {
   return body + charge
 }
 
+function estimatePreviewTextWidth(text) {
+  const value = text || ""
+  let width = 0
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i)
+    const char = value[i]
+    if (char === " ") {
+      width += 9
+    } else if (char === "/" || char === "·" || char === "." || char === "+" || char === "-") {
+      width += 14
+    } else if (SUBSCRIPT_MAP[char] || SUPERSCRIPT_MAP[char] || code >= 0x2080 && code <= 0x209F || code >= 0x2070 && code <= 0x209F) {
+      width += 16
+    } else if (code > 0x2E80) {
+      width += 32
+    } else if (char >= "A" && char <= "Z") {
+      width += 22
+    } else {
+      width += 18
+    }
+  }
+  return Math.max(32, width + 14)
+}
+
 export default {
   private: {
     savedText1: "",
@@ -287,6 +310,30 @@ export default {
     numFlag: false,
     percent66: 0,
     screenWidth: 212,
+    screenHeight: 520,
+    screenShape: "pill",
+    contentWidth: 180,
+    narrowWidth: 176,
+    keyboardTopbarWidth: 192,
+    keyboardTopbarLeft: 10,
+    keyboardSearchLeft: 3,
+    keyboardSearchWidth: 186,
+    keyboardPreviewLeft: 15,
+    keyboardPreviewWidth: 144,
+    keyboardPreviewTextWidth: 226,
+    keyboardKeyPaddingLeft: 10,
+    keyboardKeyPaddingRight: 10,
+    keyboardInitialScrollLeft: 0,
+    previewMarqueeLeft: 0,
+    previewMarqueeEnabled: false,
+    previewMarqueeContentWidth: 226,
+    keyboardMoreLeft: 120,
+    keyboardGroupLeft: 9,
+    keyboardGroupWidth: 48,
+    keyboardNumberLeft: 70,
+    keyboardNumberWidth: 48,
+    keyboardDeleteLeft: 135,
+    keyboardDeleteWidth: 48,
     topHint: "请输入分子式",
     topLeftLabel: "组",
     topMiddleLabel: "123",
@@ -302,16 +349,48 @@ export default {
     this.touchStartX = null
     this.touchStartY = null
     this.searchLoadingTimer = null
+    this.previewMarqueeTimer = null
     this.didNavigateToResults = false
     this.loadSavedText()
     this.refreshKeyboardState()
+    this.applyScreenLayout(createScreenLayout(this.screenWidth, this.screenHeight, this.screenShape))
     device.getInfo({
       success: (data) => {
-        if (data && data.screenWidth) {
-          this.screenWidth = data.screenWidth
+        if (data) {
+          this.applyScreenLayout(createScreenLayout(
+            data.screenWidth || this.screenWidth,
+            data.screenHeight || this.screenHeight,
+            data.screenShape || this.screenShape
+          ))
         }
       }
     })
+  },
+
+  applyScreenLayout(layout) {
+    this.screenWidth = layout.screenWidth
+    this.screenHeight = layout.screenHeight
+    this.screenShape = layout.shape
+    this.contentWidth = layout.contentWidth
+    this.narrowWidth = layout.narrowWidth
+    this.keyboardTopbarWidth = layout.keyboardTopbarWidth
+    this.keyboardTopbarLeft = layout.keyboardTopbarLeft
+    this.keyboardSearchLeft = layout.keyboardSearchLeft
+    this.keyboardSearchWidth = layout.keyboardSearchWidth
+    this.keyboardPreviewLeft = layout.keyboardPreviewLeft
+    this.keyboardPreviewWidth = layout.keyboardPreviewWidth
+    this.keyboardPreviewTextWidth = layout.keyboardPreviewTextWidth
+    this.keyboardKeyPaddingLeft = layout.keyboardKeyPaddingLeft
+    this.keyboardKeyPaddingRight = layout.keyboardKeyPaddingRight
+    this.keyboardInitialScrollLeft = layout.keyboardInitialScrollLeft
+    this.keyboardMoreLeft = layout.keyboardMoreLeft
+    this.keyboardGroupLeft = layout.keyboardGroupLeft
+    this.keyboardGroupWidth = layout.keyboardGroupWidth
+    this.keyboardNumberLeft = layout.keyboardNumberLeft
+    this.keyboardNumberWidth = layout.keyboardNumberWidth
+    this.keyboardDeleteLeft = layout.keyboardDeleteLeft
+    this.keyboardDeleteWidth = layout.keyboardDeleteWidth
+    this.updatePreviewMarqueeState()
   },
 
   onShow() {
@@ -322,12 +401,14 @@ export default {
   },
 
   onHide() {
+    this.stopPreviewMarquee()
     if (!this.didNavigateToResults) {
       this.clearSearchLoading(true)
     }
   },
 
   onDestroy() {
+    this.stopPreviewMarquee()
     this.clearSearchLoading(true)
   },
 
@@ -360,6 +441,8 @@ export default {
     this.hideKeyboard = false
     this.downFlag = ""
     this.scrollEditorToEnd()
+    this.scrollKeyboardToInitial()
+    this.startPreviewMarquee()
   },
 
   openSecondEditor() {
@@ -370,22 +453,28 @@ export default {
     this.hideKeyboard = false
     this.downFlag = ""
     this.scrollEditorToEnd()
+    this.scrollKeyboardToInitial()
+    this.startPreviewMarquee()
   },
 
   showKeyboard() {
     this.hideKeyboard = false
     this.scrollEditorToEnd()
+    this.scrollKeyboardToInitial()
+    this.startPreviewMarquee()
   },
 
   hideEditorKeyboard() {
     this.hideKeyboard = true
     this.downFlag = ""
+    this.stopPreviewMarquee()
     this.scrollEditorToEnd()
   },
 
   setDraftText(value) {
     this.draftText = value || ""
     this.draftDisplay = formatDisplayFormula(this.draftText)
+    this.updatePreviewMarqueeState()
   },
 
   setSavedText(inputIndex, value) {
@@ -488,6 +577,7 @@ export default {
       this.topHint = "数字 / 电荷"
       this.quickKeyLabel = "OH"
       this.panelRows = buildRows(CHARGE_PANEL_ITEMS)
+      this.updatePreviewMarqueeState()
       return
     }
     this.topLeftLabel = "组"
@@ -495,6 +585,7 @@ export default {
     this.topHint = "元素 / 基团"
     this.quickKeyLabel = "OH"
     this.panelRows = buildRows(GROUP_PANEL_ITEMS)
+    this.updatePreviewMarqueeState()
   },
 
   handelScroll(event) {
@@ -540,6 +631,7 @@ export default {
     this.hideKeyboard = true
     this.isEditing = false
     this.downFlag = ""
+    this.stopPreviewMarquee()
     storage.set({
       key: this.activeInput === 2 ? STORAGE_KEY_2 : STORAGE_KEY_1,
       value: this.draftText
@@ -677,6 +769,9 @@ export default {
   },
 
   scrollFormulaPreviewToEnd() {
+    if (this.previewMarqueeEnabled) {
+      return
+    }
     setTimeout(() => {
       if (this.$element("formulaPreview")) {
         this.$element("formulaPreview").scrollTo({
@@ -688,12 +783,71 @@ export default {
     }, 0)
   },
 
+  startPreviewMarquee() {
+    this.stopPreviewMarquee()
+    this.updatePreviewMarqueeState()
+  },
+
+  schedulePreviewMarquee() {
+    this.previewMarqueeTimer = setTimeout(() => {
+      if (!this.isEditing || this.hideKeyboard) {
+        this.previewMarqueeTimer = null
+        return
+      }
+      if (!this.previewMarqueeEnabled) {
+        this.previewMarqueeTimer = null
+        return
+      }
+      const nextLeft = this.previewMarqueeLeft - 8
+      if (nextLeft < -this.previewMarqueeContentWidth) {
+        this.previewMarqueeLeft = this.keyboardPreviewWidth
+      } else {
+        this.previewMarqueeLeft = nextLeft
+      }
+      this.schedulePreviewMarquee()
+    }, 90)
+  },
+
+  stopPreviewMarquee() {
+    if (this.previewMarqueeTimer) {
+      clearTimeout(this.previewMarqueeTimer)
+      this.previewMarqueeTimer = null
+    }
+  },
+
+  updatePreviewMarqueeState() {
+    const textWidth = estimatePreviewTextWidth(this.draftDisplay || this.topHint)
+    this.previewMarqueeEnabled = textWidth > this.keyboardPreviewWidth
+    this.previewMarqueeContentWidth = this.previewMarqueeEnabled ? textWidth + 18 : this.keyboardPreviewWidth
+    if (!this.previewMarqueeEnabled) {
+      this.previewMarqueeLeft = 0
+      this.stopPreviewMarquee()
+      return
+    }
+    if (this.isEditing && !this.hideKeyboard && !this.previewMarqueeTimer) {
+      this.previewMarqueeLeft = this.keyboardPreviewWidth
+      this.schedulePreviewMarquee()
+    }
+  },
+
   scrollEditorToEnd() {
     setTimeout(() => {
       if (this.isEditing && this.$element("editorScroll")) {
         this.$element("editorScroll").scrollTo({
           top: 0,
           left: 9999,
+          behavior: "smooth"
+        })
+      }
+    }, 0)
+  },
+
+  scrollKeyboardToInitial() {
+    setTimeout(() => {
+      if (this.isEditing && !this.hideKeyboard && this.$element("keyboard66")) {
+        this.$element("keyboard66").scrollTo({
+          top: 0,
+          left: this.keyboardInitialScrollLeft,
           behavior: "smooth"
         })
       }
@@ -961,19 +1115,6 @@ export default {
   height: 276px;
 }
 
-.arc-progress {
-  start-angle: 204deg;
-  total-angle: -48deg;
-  width: 188px;
-  height: 188px;
-  top: 82px;
-  left: 2px;
-  position: absolute;
-  color: #ffffff;
-  stroke-width: 6px;
-  layer-color: #262626;
-}
-
 #keyboard66 {
   position: absolute;
   left: 0px;
@@ -1014,7 +1155,6 @@ export default {
 }
 
 .formula-preview {
-  max-width: 136px;
   text-align: left;
 }
 
