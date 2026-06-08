@@ -1,92 +1,116 @@
 # Chemistry Toolbox
 
 <p align="center">
-  面向小米 Vela 手表设备的化学方程式查询工具
+  小米 Vela 手表端化学方程式查询工具
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/version-1.4.2-1f8f68" alt="Version">
   <img src="https://img.shields.io/badge/platform-Xiaomi%20Vela-1f8f68" alt="Xiaomi Vela">
   <img src="https://img.shields.io/badge/device-watch-2d6cdf" alt="Watch">
-  <img src="https://img.shields.io/badge/status-active-1f8f68" alt="Active">
+  <img src="https://img.shields.io/badge/status-active-1e9b6c" alt="Active">
 </p>
 
-## 项目简介
+## 简介
 
-`Chemistry Toolbox` 是一个运行在小米 Vela 可穿戴设备上的化学工具应用，当前聚焦于：
+`Chemistry Toolbox` 是一个面向小米 Vela 可穿戴设备的小屏化学工具箱。当前核心能力是输入两个关键分子式，查询同时包含这两个分子式的化学方程式，并在手环/手表屏幕上以分页、可滚动列表展示结果。
 
-- 使用两个分子式作为查询条件
-- 检索同时包含这两个分子式的化学方程式
-- 在手表小屏上展示可翻页、可滚动的结果列表
-- 提供面向化学式输入优化过的专用键盘
-
-这个项目最初来源于一个输入法演示工程，现已重构为真正的化学工具箱方向。
+项目最初来源于输入法演示工程，现已重构为化学方程式检索应用，并持续围绕化学输入、离线数据库和小屏阅读体验迭代。
 
 ## 当前功能
 
-- 双输入框搜索：输入两个分子式后进入结果页查询
-- 化学式专用键盘：保留元素、数字、括号、电荷等核心输入能力
-- 方程式结果页：支持分页、上下滚动、底部翻页按钮
-- 化学式格式化显示：结果页会把原子数显示为下标
-- 本地离线反应库：内置常见方程式，不依赖联网
-- PDF 导入库：支持将整理好的方程式资料批量导入项目数据
+- 双分子式查询：首页提供两个输入框，按“搜索”后查询同时包含二者的方程式。
+- 化学式专用键盘：保留元素、数字、括号、常见基团、电荷输入能力。
+- 小屏结果页：支持上下滑动、分页按钮、动态卡片高度和下标/上标显示。
+- 离线方程式库：内置手工整理数据和从 PDF 导入的紧凑反应索引。
+- 编辑辅助：编辑页支持“回车”保存和红色“删除”一键清空当前输入。
+- 赞助页：内置赞助码页面。
+- 关于页：展示版本、开发者、项目地址和反馈邮箱。
+- 使用说明页：提供输入、键盘、搜索结果和注意事项说明。
+- 版本同步：统一从 `src/common/appInfo.js` 管理版本，构建前自动同步到清单和 npm 元数据。
 
-## 界面说明
+## 界面
 
-### 首页
-
-- 两个可编辑的分子式输入框
-- 点击搜索后跳转到结果页
-
-### 结果页
-
-- 显示同时命中两个分子式的方程式
-- 支持上下滑动浏览当前页结果
-- 支持底部 `上一页 / 下一页` 按钮切换分页
+- 首页：两个分子式输入框、搜索按钮、赞助/关于/使用说明入口。
+- 结果页：顶部返回、查询结果标题、查询式；下方为可滚动卡片列表和分页按钮。
+- 说明页：返回按钮置顶，卡片按文本行数自适应高度，列表仅上下滑动。
+- 关于页：应用图标、版本号、开发者、项目地址、反馈邮箱。
 
 ## 项目结构
 
 ```text
 src/
+├─ common/
+│  ├─ appInfo.js              # 应用名、版本号、开发者和项目地址
+│  ├─ logo.png                # 应用图标
+│  └─ sponsor-code.png        # 赞助码图片
 ├─ components/
-│  └─ InputMethod/          # 迁移并改造后的输入法组件资源
+│  └─ InputMethod/            # 输入法组件和资源
 ├─ data/
-│  ├─ reactions.js          # 手工整理的高质量反应数据
-│  └─ generatedReactionText.js # 由导入脚本生成的紧凑批量反应索引
+│  ├─ reactions.js            # 手工整理的高质量反应数据
+│  └─ generatedReactionText.js # PDF 导入生成的紧凑反应索引
 ├─ pages/
-│  ├─ index/                # 首页与化学式输入
-│  └─ results/              # 查询结果页
+│  ├─ index/                  # 首页、编辑页、化学键盘
+│  ├─ results/                # 查询结果页
+│  ├─ sponsor/                # 赞助页
+│  ├─ about/                  # 关于页
+│  └─ guide/                  # 使用说明页
 ├─ services/
-│  └─ chemSearch.js         # 双分子式检索逻辑
-└─ manifest.json            # Vela 应用配置
+│  └─ chemSearch.js           # 双分子式检索逻辑
+└─ manifest.json              # Vela 应用配置
 
 scripts/
-└─ import_reactions.py      # 从资料文本中抽取方程式并生成数据文件
+├─ import_reactions.py        # 从高中化学方程式 PDF 导入数据
+└─ sync_version.js            # 构建前同步版本号
 ```
 
 ## 数据来源与导入
 
-项目当前同时使用两类反应数据：
+项目当前使用两类反应数据：
 
-- 手工整理的数据：字段更完整，适合展示反应类型、条件、现象
-- 批量导入的数据：覆盖面更大，用于扩充可检索方程式数量
+- 手工整理数据：质量较高，可包含类型、条件、现象等说明。
+- PDF 导入数据：覆盖面更大，用于扩充可搜索方程式数量。
 
-导入脚本：
+导入脚本默认读取：
+
+```text
+C:\Users\Administrator\Downloads\最全高中化学方程式分类汇总.pdf
+```
+
+重新导入：
 
 ```bash
 python scripts/import_reactions.py
 ```
 
-脚本会根据本地资料文本重新生成：
+导入后会更新：
 
-- `src/data/generatedReactionText.js`
+```text
+src/data/generatedReactionText.js
+```
+
+## 版本管理
+
+版本号统一维护在：
+
+```text
+src/common/appInfo.js
+```
+
+当前版本：
+
+```js
+export const APP_VERSION = "1.4.2"
+export const APP_VERSION_CODE = 10402
+```
+
+执行 `npm run start`、`npm run build`、`npm run release` 前会自动运行 `scripts/sync_version.js`，同步到：
+
+- `src/manifest.json`
+- `package.json`
+- `package-lock.json`
 
 ## 本地开发
-
-### 环境要求
-
-- Node.js
-- `aiot-toolkit`
-- 小米 Vela Quick App 开发环境
 
 ### 安装依赖
 
@@ -100,44 +124,42 @@ npm install
 npm run start
 ```
 
-### 构建
+### 构建 Debug 包
 
 ```bash
 npm run build
 ```
 
-### 发布包
+### 构建 Release 包
 
 ```bash
 npm run release
 ```
 
-构建产物会输出到 `dist/`。
+构建产物输出到 `dist/`。正式包示例：
 
-## 技术要点
+```text
+dist/com.chemistry.toolbox.miband.release.1.4.2.rpk
+```
 
-- 基于 Xiaomi Vela Quick App `.ux` 页面体系
-- 使用 `system.storage` 保存查询参数和输入内容
-- 使用独立结果页避免首页首次加载过重
-- 对导入方程式做去重与清洗，降低 OCR / 换行带来的错误
+## 注意事项
 
-## 后续计划
+- `sign/` 目录包含签名文件，已加入 `.gitignore`，不要提交私钥。
+- 项目为离线检索应用，不依赖网络请求。
+- PDF 导入数据经过清洗和去重，但仍可能存在资料源或抽取误差。
+- 资源来源于网络，侵权必删。
 
-- 扩充高质量反应库并补全条件、现象、分类
-- 增强带电离子与复杂化学式检索
-- 优化结果卡片布局，适配圆形/胶囊屏边界
-- 增加物质详情页，而不只停留在方程式列表
+## 项目地址
 
-## 仓库说明
+仓库地址：
 
-这是一个持续迭代中的个人项目，当前重点是：
+[pcai7296/Chemistry-Toolbox](https://github.com/pcai7296/Chemistry-Toolbox)
 
-1. 先把手表端查询链路做稳定
-2. 再提高化学数据质量
-3. 最后继续完善交互和显示效果
+仓库不一定始终公开。
 
-如果你也在做 Vela 手表应用，这个项目也可以作为：
+## 反馈
 
-- 双输入框检索页示例
-- 小屏结果列表分页示例
-- 可定制输入键盘改造示例
+如有建议和反馈，请联系：
+
+- `18938087296@163.com`
+- `1992976096@qq.com`
