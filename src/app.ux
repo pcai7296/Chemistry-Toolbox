@@ -1,10 +1,6 @@
 <script>
 export default {
-  onCreate() {
-    console.log("Chemistry Toolbox created")
-  },
-  onDestroy() {
-    console.log("Chemistry Toolbox destroyed")
-  }
+  onCreate() {},
+  onDestroy() {}
 }
 </script>

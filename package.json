@@ -12,6 +12,9 @@
     "build": "aiot build",
     "prerelease": "node scripts/sync_version.js",
     "release": "aiot release --enable-jsc",
+    "check:layout": "node scripts/check_layout.mjs",
+    "check:search": "node scripts/check_search.mjs",
+    "check": "npm run check:layout && npm run check:search",
     "lint": "eslint --fix --ext .js \"src/**/*.js\" --no-error-on-unmatched-pattern"
   },
   "lint-staged": {
