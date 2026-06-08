@@ -110,6 +110,7 @@
 <script>
 import storage from "@system.storage"
 import vibrator from "@system.vibrator"
+import device from "@system.device"
 import router from "@system.router"
 import { applyResponsiveLayout } from "../../services/deviceLayout.js"
 import { estimateFormulaPreviewWidth, formatInputFormula, splitCharge } from "../../services/formulaFormat.js"
@@ -264,7 +265,7 @@ export default {
     this.didNavigateToResults = false
     this.loadSavedText()
     this.refreshKeyboardState()
-    applyResponsiveLayout(this, this.screenShape)
+    applyResponsiveLayout(this, device, this.screenShape)
   },
 
   applyScreenLayout(layout) {

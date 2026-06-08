@@ -37,6 +37,7 @@
 <script>
 import storage from "@system.storage"
 import router from "@system.router"
+import device from "@system.device"
 import { searchReactionsByPair } from "../../services/chemSearch.js"
 import { applyResponsiveLayout } from "../../services/deviceLayout.js"
 import { formatEquationSideText, formatInputFormula } from "../../services/formulaFormat.js"
@@ -130,7 +131,7 @@ export default {
   onInit() {
     this.touchStartX = null
     this.touchStartY = null
-    applyResponsiveLayout(this, "pill")
+    applyResponsiveLayout(this, device, "pill")
     this.loadSearchInputs()
   },
 

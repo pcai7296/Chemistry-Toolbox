@@ -9,6 +9,7 @@
 
 <script>
 import router from "@system.router"
+import device from "@system.device"
 import { applyResponsiveLayout } from "../../services/deviceLayout.js"
 
 export default {
@@ -24,7 +25,7 @@ export default {
   },
 
   onInit() {
-    applyResponsiveLayout(this, "pill")
+    applyResponsiveLayout(this, device, "pill")
   },
 
   applyScreenLayout(layout) {
