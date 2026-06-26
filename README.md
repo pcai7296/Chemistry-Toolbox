@@ -1,87 +1,102 @@
 # Chemistry Toolbox
 
 <p align="center">
-  小米 Vela 手表端化学方程式查询工具
+  小米 Vela 手表端化学方程式查询与周期表工具
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.5.0-1f8f68" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.8.0-1f8f68" alt="Version">
   <img src="https://img.shields.io/badge/platform-Xiaomi%20Vela-1f8f68" alt="Xiaomi Vela">
-  <img src="https://img.shields.io/badge/device-watch-2d6cdf" alt="Watch">
+  <img src="https://img.shields.io/badge/device-Xiaomi%20Band%2010-2d6cdf" alt="Xiaomi Band 10">
   <img src="https://img.shields.io/badge/status-active-1e9b6c" alt="Active">
 </p>
 
 ## 简介
 
-`Chemistry Toolbox` 是一个面向小米 Vela 可穿戴设备的小屏化学工具箱。当前核心能力是输入两个关键分子式，查询同时包含这两个分子式的化学方程式，并在手环/手表屏幕上以分页、可滚动列表展示结果。
+`Chemistry Toolbox` 是一个面向小米 Vela 可穿戴设备的小屏化学工具箱。当前主要能力包括：
 
-项目最初来源于输入法演示工程，现已重构为化学方程式检索应用，并持续围绕化学输入、离线数据库和小屏阅读体验迭代。
+- 输入两个关键分子式，查询同时包含二者的化学方程式。
+- 使用离线周期表图片浏览元素，并通过屏幕中央准星查看元素详情。
+- 在手环/手表窄屏上展示反应类型、条件、现象等可用信息。
+
+项目最初来源于输入法演示工程，现已重构为离线化学工具应用，并持续围绕小屏输入、离线数据库、手环端性能和阅读体验迭代。
 
 ## 当前功能
 
-- 双分子式查询：首页提供两个输入框，按“搜索”后查询同时包含二者的方程式。
-- 化学式专用键盘：保留元素、数字、括号、常见基团、电荷输入能力，并优化蜂窝式主键盘布局。
-- 小屏结果页：支持上下滑动、分页按钮、动态卡片高度、下标/上标显示和胶囊屏分页栏轻微横向拖动。
-- 多屏适配：支持胶囊屏、竖向圆角矩形、方形圆角矩形和圆形屏，非胶囊屏结果卡片与说明卡片按屏幕宽度放大。
-- 离线方程式库：内置手工整理数据和从 PDF 导入的紧凑反应索引。
-- 编辑辅助：编辑页支持“回车”保存和红色“删除”一键清空当前输入。
-- 赞助页：内置赞助码页面。
+- 首页入口：首页保留搜索、周期表、赞助、关于和使用说明入口。
+- 方程式搜索：搜索页提供两个输入框，按“搜索”后查询同时包含二者的方程式。
+- 化学式专用键盘：支持元素、数字、括号、常见基团、电荷输入。
+- 离线反应库：内置 20 条手工精选反应和 1522 条导入反应。
+- 构建期索引：导入脚本生成倒排索引，手环端搜索时避免扫描大文本。
+- 结果卡片：精选结果优先，导入结果按源顺序展示；类型、条件、现象有信息才显示。
+- 长文本显示：长反应物、长生成物、现象和条件会拆行显示，避免省略号截断。
+- 周期表：使用整张透明背景周期表图片，拖动图片到固定准星下，点击“查看”打开元素详情。
+- 元素详情：显示基础信息、周期/族/分区、电子构型、常见价态、电负性、半径、电离能、物态和发现信息等可用字段。
+- 多屏适配：支持胶囊屏、竖向圆角矩形、方形圆角矩形和圆形屏布局参数。
 - 关于页：展示版本、开发者、项目地址和反馈邮箱。
-- 使用说明页：提供输入、键盘、搜索结果和注意事项说明。
-- 版本同步：统一从 `src/common/appInfo.js` 管理版本，构建前自动同步到清单和 npm 元数据。
+- 使用说明页：随当前首页、搜索和周期表交互更新。
 
 ## 界面
 
-- 首页：两个分子式输入框、搜索按钮、赞助/关于/使用说明入口。
-- 结果页：顶部返回、查询结果标题、查询式；下方为可滚动卡片列表和分页按钮，翻页后自动回到当前页首张卡片。
-- 说明页：返回按钮置顶，卡片按文本行数自适应高度，列表仅上下滑动，并为胶囊屏保留底部安全滑动余量。
-- 关于页：应用图标、版本号、开发者、项目地址、反馈邮箱。
+- 首页：周期表、搜索、赞助、关于、使用说明入口。
+- 搜索页：两个分子式输入框、搜索按钮和化学式输入法。
+- 结果页：顶部返回、查询结果标题、查询式；下方为可滚动卡片列表和分页按钮。
+- 周期表页：固定返回、标题、准星和查看按钮；底层周期表图片可拖动。
+- 元素详情：在周期表上方弹出信息卡，长字段按行展开。
+- 说明页：卡片式使用说明，适配手环窄屏滚动阅读。
 
 ## 项目结构
 
 ```text
 src/
 ├─ common/
-│  ├─ appInfo.js              # 应用名、版本号、开发者和项目地址
-│  ├─ logo.png                # 应用图标
-│  └─ sponsor-code.png        # 赞助码图片
+│  ├─ appInfo.js                  # 应用名、版本号、开发者和项目地址
+│  ├─ logo.png                    # 应用图标
+│  ├─ periodic-table.png          # 透明背景周期表图片
+│  └─ sponsor-code.png            # 赞助码图片
 ├─ components/
-│  └─ InputMethod/            # 键盘图标资源
+│  └─ InputMethod/                # 键盘图标资源
 ├─ data/
-│  ├─ reactions.js            # 手工整理的高质量反应数据
-│  └─ generatedReactionText.js # PDF 导入生成的紧凑反应索引
+│  ├─ reactions.js                # 手工精选反应数据
+│  ├─ generatedReactionIndex.js   # 构建期生成的方程式数组和倒排索引
+│  ├─ generatedReactionText.js    # 导入数据的兼容文本输出
+│  ├─ periodicElements.js         # 元素详情源数据
+│  └─ periodicElementsCompact.js  # 运行时使用的紧凑元素数据
 ├─ pages/
-│  ├─ index/                  # 首页、编辑页、化学键盘
-│  ├─ results/                # 查询结果页
-│  ├─ sponsor/                # 赞助页
-│  ├─ about/                  # 关于页
-│  └─ guide/                  # 使用说明页
+│  ├─ index/                      # 首页和化学键盘
+│  ├─ search/                     # 方程式搜索页
+│  ├─ periodic/                   # 周期表页
+│  ├─ results/                    # 查询结果页
+│  ├─ sponsor/                    # 赞助页
+│  ├─ about/                      # 关于页
+│  └─ guide/                      # 使用说明页
 ├─ services/
-│  ├─ chemSearch.js           # 双分子式检索逻辑
-│  ├─ deviceLayout.js         # 设备屏幕信息读取与布局应用
-│  ├─ formulaFormat.js        # 分子式上下标和方程式显示格式化
-│  └─ screenProfile.js        # 不同屏幕形状和分辨率的布局参数
-└─ manifest.json              # Vela 应用配置
+│  ├─ chemSearch.js               # 双分子式检索逻辑
+│  ├─ deviceLayout.js             # 设备屏幕信息读取与布局应用
+│  ├─ formulaFormat.js            # 分子式上下标和方程式显示格式化
+│  └─ screenProfile.js            # 不同屏幕形状和分辨率的布局参数
+└─ manifest.json                  # Vela 应用配置
 
 scripts/
-├─ check_format.mjs           # 分子式显示格式回归检查
-├─ check_layout.mjs           # 多屏布局边界检查
-├─ check_search.mjs           # 搜索结果回归检查
-├─ import_reactions.py        # 从高中化学方程式 PDF 导入数据
-└─ sync_version.js            # 构建前同步版本号
+├─ build_reaction_database.py     # 反应库清洗和扩容脚本
+├─ check_format.mjs               # 分子式显示格式回归检查
+├─ check_layout.mjs               # 多屏布局边界检查
+├─ check_search.mjs               # 搜索和索引回归检查
+├─ import_reactions.py            # 导入并生成反应库索引
+└─ sync_version.js                # 构建前同步版本号
 ```
 
 ## 数据来源与导入
 
 项目当前使用两类反应数据：
 
-- 手工整理数据：质量较高，可包含类型、条件、现象等说明。
-- PDF 导入数据：覆盖面更大，用于扩充可搜索方程式数量。
+- 手工精选数据：质量较高，可包含类型、条件、现象等说明。
+- 导入数据：覆盖面更大，用于扩充可搜索方程式数量。
 
-导入脚本默认读取：
+导入脚本会生成构建期索引：
 
 ```text
-C:\Users\Administrator\Downloads\最全高中化学方程式分类汇总.pdf
+src/data/generatedReactionIndex.js
 ```
 
 重新导入：
@@ -90,10 +105,11 @@ C:\Users\Administrator\Downloads\最全高中化学方程式分类汇总.pdf
 python scripts/import_reactions.py
 ```
 
-导入后会更新：
+导入后建议运行：
 
-```text
-src/data/generatedReactionText.js
+```bash
+npm run check
+npm run build
 ```
 
 ## 版本管理
@@ -107,8 +123,8 @@ src/common/appInfo.js
 当前版本：
 
 ```js
-export const APP_VERSION = "1.5.0"
-export const APP_VERSION_CODE = 10500
+export const APP_VERSION = "1.8.0"
+export const APP_VERSION_CODE = 10800
 ```
 
 执行 `npm run start`、`npm run build`、`npm run release` 前会自动运行 `scripts/sync_version.js`，同步到：
@@ -119,37 +135,37 @@ export const APP_VERSION_CODE = 10500
 
 ## 本地开发
 
-### 安装依赖
+安装依赖：
 
 ```bash
 npm install
 ```
 
-### 启动开发
+启动开发：
 
 ```bash
 npm run start
 ```
 
-### 构建 Debug 包
+构建 Debug 包：
 
 ```bash
 npm run build
 ```
 
-### 构建 Release 包
+构建 Release 包：
 
 ```bash
 npm run release
 ```
 
-构建产物输出到 `dist/`。正式包示例：
+构建产物输出到 `dist/`。Debug 包示例：
 
 ```text
-dist/com.chemistry.toolbox.miband.release.1.5.0.rpk
+dist/com.chemistry.toolbox.miband.debug.1.8.0.rpk
 ```
 
-### 回归检查
+回归检查：
 
 ```bash
 npm run check
@@ -157,18 +173,16 @@ npm run check
 
 ## 注意事项
 
-- `sign/` 目录包含签名文件，已加入 `.gitignore`，不要提交私钥。
+- `sign/` 目录包含签名文件，不要提交私钥。
 - 项目为离线检索应用，不依赖网络请求。
-- PDF 导入数据经过清洗和去重，但仍可能存在资料源或抽取误差。
+- 导入数据经过清洗和去重，但仍可能存在资料源或抽取误差。
+- 周期表交互优先保证性能和对齐稳定，因此使用“拖动图片到准星后查看”的方式。
+- Vela 文本组件在长字符串上可能出现截断，结果页和元素详情页应优先使用拆行后的多个文本节点。
 - 资源来源于网络，侵权必删。
 
 ## 项目地址
 
-仓库地址：
-
 [pcai7296/Chemistry-Toolbox](https://github.com/pcai7296/Chemistry-Toolbox)
-
-仓库不一定始终公开。
 
 ## 反馈
 

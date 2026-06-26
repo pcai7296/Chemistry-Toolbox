@@ -4,14 +4,18 @@
       <list-item type="tip" class="results-tip-item">
         <text class="results-subtitle">同时包含这两个分子式的方程式</text>
       </list-item>
-      <list-item type="result" for="{{visibleResults}}" class="result-card-item" style="height: {{$item.itemHeight}}px;">
-        <div class="result-card" style="height: {{$item.cardHeight}}px;padding: {{resultCardPaddingY}}px {{resultCardPaddingX}}px;border-radius: {{resultCardRadius}}px;">
-          <text class="result-equation-side" style="height: {{$item.leftTextHeight}}px;font-size: {{resultSideFontSize}}px;line-height: {{resultSideLineHeight}}px;">{{$item.leftDisplay}}</text>
+      <list-item type="result" for="{{visibleResults}}" class="result-card-item" style="{{$item.itemStyle}}">
+        <div class="result-card" style="{{$item.cardStyle}}">
+          <div class="result-equation-line" for="{{line in $item.leftLines}}" style="{{line.rowStyle}}">
+            <text class="result-equation-side" style="{{line.textStyle}}">{{line.text}}</text>
+          </div>
           <text class="result-equation-arrow" style="font-size: {{resultArrowFontSize}}px;line-height: {{resultArrowLineHeight}}px;">→</text>
-          <text class="result-equation-side" style="height: {{$item.rightTextHeight}}px;font-size: {{resultSideFontSize}}px;line-height: {{resultSideLineHeight}}px;">{{$item.rightDisplay}}</text>
-          <text class="result-meta" if="{{$item.type}}" style="font-size: {{resultMetaFontSize}}px;line-height: {{resultMetaLineHeight}}px;">类型：{{$item.type}}</text>
-          <text class="result-meta" if="{{$item.conditions}}" style="font-size: {{resultMetaFontSize}}px;line-height: {{resultMetaLineHeight}}px;">条件：{{$item.conditions}}</text>
-          <text class="result-meta" if="{{$item.phenomenon}}" style="font-size: {{resultMetaFontSize}}px;line-height: {{resultMetaLineHeight}}px;">现象：{{$item.phenomenon}}</text>
+          <div class="result-equation-line" for="{{line in $item.rightLines}}" style="{{line.rowStyle}}">
+            <text class="result-equation-side" style="{{line.textStyle}}">{{line.text}}</text>
+          </div>
+          <div class="result-meta-row" for="{{meta in $item.metaLineRows}}" style="{{meta.rowStyle}}">
+            <text class="result-meta-text" style="{{meta.staticStyle}}">{{meta.text}}</text>
+          </div>
         </div>
       </list-item>
     </list>
@@ -50,52 +54,195 @@ const PAGINATION_DRAG_ZONE_HEIGHT = 84
 const BASE_CARD_WIDTH = 188
 const CARD_BOTTOM_GAP = 10
 const MIN_CARD_HEIGHT = 116
+const META_ROW_GAP = 4
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value))
 }
 
-function estimateLineCount(text, charsPerLine) {
+function estimateTextWidth(text, fontSize) {
   const value = text || ""
-  if (!value) {
-    return 1
+  let width = 0
+  for (let i = 0; i < value.length; i += 1) {
+    const char = value[i]
+    const code = value.charCodeAt(i)
+    if (char === " ") {
+      width += fontSize * 0.42
+    } else if (char === "+" || char === "-" || char === "/" || char === "." || char === "·") {
+      width += fontSize * 0.72
+    } else if (char === "(" || char === ")" || char === "[" || char === "]") {
+      width += fontSize * 0.62
+    } else if (code >= 0x2070 && code <= 0x209F) {
+      width += fontSize * 0.62
+    } else if (code > 0x2E80) {
+      width += fontSize
+    } else if (char >= "A" && char <= "Z") {
+      width += fontSize * 0.92
+    } else if (char >= "a" && char <= "z") {
+      width += fontSize * 0.72
+    } else if (char >= "0" && char <= "9") {
+      width += fontSize * 0.66
+    } else {
+      width += fontSize * 0.82
+    }
   }
-  return Math.max(1, Math.ceil(value.length / charsPerLine))
+  return Math.max(32, Math.ceil(width + fontSize))
 }
 
-function getMetaLineCount(item, charsPerLine) {
-  let count = 0
-  if (item.type) {
-    count += estimateLineCount("类型：" + item.type, charsPerLine)
+function wrapTextLinesToWidth(text, width, fontSize) {
+  const value = text || ""
+  if (!value) {
+    return [""]
   }
-  if (item.conditions) {
-    count += estimateLineCount("条件：" + item.conditions, charsPerLine)
+  const lines = []
+  let line = ""
+  const maxWidth = Math.max(1, width - fontSize)
+  for (let i = 0; i < value.length; i += 1) {
+    const char = value[i]
+    const candidate = line + char
+    if (line && estimateTextWidth(candidate, fontSize) > maxWidth) {
+      lines.push(line.replace(/\s+$/g, ""))
+      line = char.replace(/^\s+/g, "")
+    } else {
+      line = candidate
+    }
   }
-  if (item.phenomenon) {
-    count += estimateLineCount("现象：" + item.phenomenon, charsPerLine)
+  if (line) {
+    lines.push(line.replace(/\s+$/g, ""))
   }
-  return count
+  return lines.length > 0 ? lines : [""]
+}
+
+function px(value) {
+  return Math.round(value || 0) + "px"
+}
+
+function styleFrom(parts) {
+  return parts.join(";") + ";"
+}
+
+function buildSingleLineTextStyle(width, fontSize, lineHeight) {
+  return styleFrom([
+    "width: " + px(width),
+    "height: " + px(lineHeight),
+    "font-size: " + px(fontSize),
+    "line-height: " + px(lineHeight),
+    "lines: 1"
+  ])
+}
+
+function buildTextLineRows(lines, width, fontSize, lineHeight, gapAfterLast) {
+  const rows = []
+  for (let i = 0; i < lines.length; i += 1) {
+    const rowHeight = lineHeight + (i === lines.length - 1 ? gapAfterLast : 0)
+    rows.push({
+      text: lines[i],
+      rowHeight,
+      rowStyle: styleFrom([
+        "height: " + px(rowHeight)
+      ]),
+      textStyle: buildSingleLineTextStyle(width, fontSize, lineHeight),
+      staticStyle: buildSingleLineTextStyle(width, fontSize, lineHeight)
+    })
+  }
+  return rows
+}
+
+function measureEquationText(text, metrics) {
+  const textWidth = metrics.cardWidth - metrics.cardPaddingX * 2
+  const lines = wrapTextLinesToWidth(text, textWidth, metrics.sideFontSize)
+  return {
+    lines: buildTextLineRows(lines, textWidth, metrics.sideFontSize, metrics.sideLineHeight, 0),
+    textHeight: lines.length * metrics.sideLineHeight,
+    marquee: false
+  }
+}
+
+function measureMetaRow(id, label, value, metrics) {
+  if (!value) {
+    return null
+  }
+  const text = label + "：" + value
+  const textWidth = metrics.cardWidth - metrics.cardPaddingX * 2
+  const lines = wrapTextLinesToWidth(text, textWidth, metrics.metaFontSize)
+  const lineRows = buildTextLineRows(lines, textWidth, metrics.metaFontSize, metrics.metaLineHeight, META_ROW_GAP)
+  let rowHeight = 0
+  for (let i = 0; i < lineRows.length; i += 1) {
+    rowHeight += lineRows[i].rowHeight
+  }
+  return {
+    id,
+    lineRows,
+    value,
+    textHeight: lines.length * metrics.metaLineHeight,
+    rowHeight,
+    marquee: false,
+    rowStyle: styleFrom(["height: " + px(rowHeight)])
+  }
+}
+
+function buildMetaRows(item, metrics) {
+  const rows = [
+    measureMetaRow("type", "类型", item.type, metrics),
+    measureMetaRow("conditions", "条件", item.conditions, metrics),
+    measureMetaRow("phenomenon", "现象", item.phenomenon, metrics)
+  ]
+  const result = []
+  for (let i = 0; i < rows.length; i += 1) {
+    if (rows[i]) {
+      result.push(rows[i])
+    }
+  }
+  return result
+}
+
+function flattenMetaRows(metaRows) {
+  const result = []
+  for (let i = 0; i < metaRows.length; i += 1) {
+    const row = metaRows[i]
+    for (let j = 0; j < row.lineRows.length; j += 1) {
+      const lineRow = row.lineRows[j]
+      result.push({
+        id: row.id + "-" + j,
+        text: lineRow.text,
+        rowHeight: lineRow.rowHeight,
+        rowStyle: lineRow.rowStyle,
+        staticStyle: lineRow.staticStyle
+      })
+    }
+  }
+  return result
 }
 
 function withMeasuredLayout(item, metrics) {
-  const textWidth = metrics.cardWidth - metrics.cardPaddingX * 2
-  const charsPerLine = Math.max(14, Math.floor(textWidth / Math.max(8, Math.floor(metrics.sideFontSize * 0.56))))
-  const metaCharsPerLine = Math.max(12, Math.floor(textWidth / Math.max(7, Math.floor(metrics.metaFontSize * 0.62))))
-  const leftLines = estimateLineCount(item.leftDisplay, charsPerLine)
-  const rightLines = estimateLineCount(item.rightDisplay, charsPerLine)
-  const metaLines = getMetaLineCount(item, metaCharsPerLine)
-  const leftTextHeight = leftLines * metrics.sideLineHeight
-  const rightTextHeight = rightLines * metrics.sideLineHeight
-  const metaHeight = metaLines * metrics.metaLineHeight
+  const leftMeasure = measureEquationText(item.leftDisplay, metrics)
+  const rightMeasure = measureEquationText(item.rightDisplay, metrics)
+  const metaRows = buildMetaRows(item, metrics)
+  const metaLineRows = flattenMetaRows(metaRows)
+  const leftTextHeight = leftMeasure.textHeight
+  const rightTextHeight = rightMeasure.textHeight
+  let metaHeight = 0
+  for (let i = 0; i < metaRows.length; i += 1) {
+    metaHeight += metaRows[i].rowHeight
+  }
   const cardHeight = Math.max(
     metrics.minCardHeight,
     metrics.cardPaddingY * 2 + leftTextHeight + metrics.arrowHeight + rightTextHeight + metaHeight
   )
   return Object.assign({}, item, {
+    leftLines: leftMeasure.lines,
+    rightLines: rightMeasure.lines,
     leftTextHeight,
     rightTextHeight,
+    metaLineRows,
     cardHeight,
-    itemHeight: cardHeight + CARD_BOTTOM_GAP
+    itemHeight: cardHeight + CARD_BOTTOM_GAP,
+    itemStyle: styleFrom(["height: " + px(cardHeight + CARD_BOTTOM_GAP)]),
+    cardStyle: styleFrom([
+      "height: " + px(cardHeight),
+      "padding: " + px(metrics.cardPaddingY) + " " + px(metrics.cardPaddingX),
+      "border-radius: " + px(metrics.cardRadius)
+    ])
   })
 }
 
@@ -134,6 +281,7 @@ export default {
     resultCardPaddingX: 12,
     resultCardPaddingY: 10,
     resultCardRadius: 18,
+    resultTextWidth: 164,
     resultSideFontSize: 18,
     resultSideLineHeight: 26,
     resultArrowFontSize: 18,
@@ -184,6 +332,7 @@ export default {
     this.resultCardPaddingX = Math.floor(12 * resultScale)
     this.resultCardPaddingY = Math.floor(10 * resultScale)
     this.resultCardRadius = Math.floor(18 * resultScale)
+    this.resultTextWidth = resultCardWidth - this.resultCardPaddingX * 2
     this.resultSideFontSize = Math.floor(18 * resultScale)
     this.resultSideLineHeight = Math.floor(26 * resultScale)
     this.resultArrowFontSize = Math.floor(18 * resultScale)
@@ -248,12 +397,16 @@ export default {
       cardWidth: this.cardWidth,
       cardPaddingX: this.resultCardPaddingX,
       cardPaddingY: this.resultCardPaddingY,
+      screenWidth: this.screenWidth,
+      screenShape: this.screenShape,
       sideFontSize: this.resultSideFontSize,
       sideLineHeight: this.resultSideLineHeight,
       arrowHeight: this.resultArrowHeight,
       metaFontSize: this.resultMetaFontSize,
       metaLineHeight: this.resultMetaLineHeight,
-      minCardHeight: this.resultMinCardHeight
+      minCardHeight: this.resultMinCardHeight,
+      cardRadius: this.resultCardRadius,
+      textWidth: this.resultTextWidth
     }
     this.searchResults = this.rawSearchResults.map((item) => {
       const equation = item.equation || ""
@@ -265,6 +418,8 @@ export default {
         type: item.type || "",
         conditions: item.conditions || "",
         phenomenon: item.phenomenon || "",
+        commonness: item.commonness || "",
+        visibility: item.visibility || "",
         leftDisplay: formatEquationSideText(left),
         rightDisplay: formatEquationSideText(right)
       }, metrics)
@@ -512,17 +667,72 @@ export default {
   color: #182b25;
   font-weight: bold;
   text-align: center;
-  lines: 4;
   text-overflow: clip;
 }
 
-.result-meta {
-  margin-top: 4px;
+.result-equation-marquee {
+  position: relative;
+  width: 100%;
+  height: 26px;
+  overflow: hidden;
+}
+
+.result-marquee-track {
+  position: absolute;
+  top: 0px;
+  height: 26px;
+}
+
+.result-equation-marquee-text {
+  position: absolute;
+  top: 0px;
+  font-size: 18px;
+  line-height: 26px;
+  color: #182b25;
+  font-weight: bold;
+  text-align: left;
+  lines: 1;
+  text-overflow: clip;
+}
+
+.result-meta-row {
+  width: 100%;
+}
+
+.result-meta-text {
+  width: 100%;
   font-size: 14px;
   line-height: 22px;
   color: #4f5f59;
-  lines: 2;
-  text-overflow: ellipsis;
+  text-overflow: clip;
+}
+
+.result-meta-label {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  font-size: 14px;
+  line-height: 22px;
+  color: #4f5f59;
+}
+
+.result-meta-marquee {
+  position: absolute;
+  width: 100%;
+  height: 22px;
+  overflow: hidden;
+  color: #4f5f59;
+}
+
+.result-meta-marquee-text {
+  position: absolute;
+  top: 0px;
+  font-size: 14px;
+  line-height: 22px;
+  color: #4f5f59;
+  text-align: left;
+  lines: 1;
+  text-overflow: clip;
 }
 
 .results-pagination {

@@ -1,13 +1,13 @@
 {
   "name": "chemistry-toolbox",
-  "version": "1.5.0",
+  "version": "1.8.0",
   "description": "Chemistry Toolbox for Xiaomi Vela wearable devices.",
   "engines": {
     "node": ">=8.10"
   },
   "scripts": {
     "prestart": "node scripts/sync_version.js",
-    "start": "aiot start --watch --open-nuttx",
+    "start": "aiot start --watch --openVNC",
     "prebuild": "node scripts/sync_version.js",
     "build": "aiot build",
     "prerelease": "node scripts/sync_version.js",

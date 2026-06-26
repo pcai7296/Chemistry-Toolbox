@@ -1,594 +1,76 @@
 <template>
-  <div class="chem-root" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
-    <div class="home-view" if="{{!isEditing}}">
-      <text class="home-title">化学工具箱</text>
-      <div class="home-input" style="width: {{contentWidth}}px;" @click="openEditor">
-        <text class="home-input-text" if="{{savedText1}}">{{savedText1Display}}</text>
-        <text static class="home-placeholder" if="{{!savedText1}}">点击输入</text>
+  <div class="home-page">
+    <text class="home-title" style="left: {{titleLeft}}px;width: {{titleWidth}}px;">化学工具箱</text>
+    <div class="main-actions" style="left: {{contentLeft}}px;width: {{contentWidth}}px;">
+      <div class="periodic-button" @click="openPeriodic">
+        <text class="periodic-button-title">周期表</text>
+        <text class="periodic-button-subtitle">元素速查</text>
       </div>
-      <div class="home-input second-input" style="width: {{contentWidth}}px;" @click="openSecondEditor">
-        <text class="home-input-text" if="{{savedText2}}">{{savedText2Display}}</text>
-        <text static class="home-placeholder" if="{{!savedText2}}">点击输入</text>
-      </div>
-      <div class="search-button" @click="searchEquations">
-        <text class="search-button-text">搜索</text>
-      </div>
-      <div class="secondary-actions" style="width: {{narrowWidth}}px;">
-        <div class="sponsor-button" @click="openSponsor">
-          <text class="sponsor-button-text">赞助</text>
-        </div>
-        <div class="about-button" @click="openAbout">
-          <text class="about-button-text">关于</text>
-        </div>
-      </div>
-      <div class="guide-button" style="width: {{narrowWidth}}px;" @click="openGuide">
-        <text class="guide-button-text">使用说明</text>
-      </div>
-      <text class="home-hint" if="{{homeMessage}}">{{homeMessage}}</text>
-    </div>
-
-    <div class="editor-view" if="{{isEditing}}">
-      <div class="editor-input" @click="showKeyboard">
-        <scroll id="editorScroll" scroll-x="{{true}}" class="editor-scroll">
-          <div class="editor-content">
-            <text class="editor-text" if="{{draftText}}">{{draftDisplay}}</text>
-            <text static class="editor-placeholder" if="{{!draftText}}">请输入内容</text>
-            <text class="cursor" if="{{!hideKeyboard}}"></text>
-          </div>
-        </scroll>
-      </div>
-      <div class="editor-actions" if="{{!hideKeyboard}}">
-        <text class="enter-button" @click="saveAndCloseEditor">回车</text>
-        <text class="clear-button" @click="clearCurrentInput">删除</text>
+      <div class="search-button" @click="openSearch">
+        <text class="search-button-title">搜索</text>
+        <text class="search-button-subtitle">方程式查询</text>
       </div>
     </div>
-
-    <div class="keyboard-page" if="{{isEditing && !hideKeyboard}}">
-      <div class="keyboard-bg">
-        <scroll id="keyboard66" scroll-x="{{true}}" onscroll="handelScroll" style="padding-left: {{keyboardKeyPaddingLeft}}px;padding-right: {{keyboardKeyPaddingRight}}px;">
-          <div if="{{!numFlag}}" style="left: 3px; flex-direction: column;">
-            <div static style="margin-left: 0px;margin-top: 0px;height: 60px;">
-              <text class="calbtn66" for="{{item in keys['full'][0]}}" @click="onSelect(item)">{{item}}</text>
-              <text class="calbtn66" @click="onBtnClick('quickGroup')">{{quickKeyLabel}}</text>
-            </div>
-            <div static style="margin-left: 32px;margin-top: -5px;height: 60px;">
-              <text class="calbtn66" for="{{item in keys['full'][1]}}" @click="onSelect(item)">{{item}}</text>
-            </div>
-            <div static style="margin-left: 64px;margin-top: -5px;height: 60px;">
-              <text class="calbtn66" for="{{item in keys['full'][2]}}" @click="onSelect(item)">{{item}}</text>
-            </div>
-          </div>
-          <div else style="left: 3px; flex-direction: column;">
-            <div static style="margin-left: 0px;margin-top: 0px;height: 60px;">
-              <text class="calbtn66" for="{{item in keys['sign'][0]}}" @click="onSelect(item)">{{item}}</text>
-            </div>
-            <div static style="margin-left: 32px;margin-top: -5px;height: 60px;">
-              <text class="calbtn66" for="{{item in keys['sign'][1]}}" @click="onSelect(item)">{{item}}</text>
-            </div>
-            <div static style="margin-left: 64px;margin-top: -5px;height: 60px;">
-              <text class="calbtn66" for="{{item in keys['sign'][2]}}" @click="onSelect(item)">{{item}}</text>
-            </div>
-          </div>
-        </scroll>
+    <div class="secondary-actions" style="left: {{narrowLeft}}px;width: {{narrowWidth}}px;">
+      <div class="sponsor-button" @click="openSponsor">
+        <text class="secondary-button-text sponsor-text">赞助</text>
       </div>
-
-      <div static class="arc-topbar" style="left: {{keyboardTopbarLeft}}px;width: {{keyboardTopbarWidth}}px;">
-        <img static class="arc-search" src="/components/InputMethod/assets/arc/search.png" style="left: {{keyboardSearchLeft}}px;width: {{keyboardSearchWidth}}px;" />
-        <scroll id="formulaPreview" scroll-x="{{true}}" class="candidate-scroll" style="left: {{keyboardPreviewLeft}}px;width: {{keyboardPreviewWidth}}px;">
-          <div style="position: absolute;left: {{previewMarqueeLeft}}px;top: 0px;height: 42px;width: {{previewMarqueeContentWidth}}px;padding-right:20px">
-            <text class="calbtn02 formula-preview" style="width: {{previewMarqueeContentWidth}}px;">{{draftDisplay || topHint}}</text>
-          </div>
-        </scroll>
-        <img show="{{panelRows.length > 0}}" class="candidate-more" src="/components/InputMethod/assets/arc/down2.png" style="left: {{keyboardMoreLeft}}px;" @click="onBtnClick('down')" />
-        <div class="icon-btn icon-lang" style="left: {{keyboardGroupLeft}}px;width: {{keyboardGroupWidth}}px;" @click="onPrimaryTopAction">
-          <text class="top-btn-text">{{topLeftLabel}}</text>
-        </div>
-        <div class="icon-btn icon-num" style="left: {{keyboardNumberLeft}}px;width: {{keyboardNumberWidth}}px;" @click="onSecondaryTopAction">
-          <text class="top-btn-text">{{topMiddleLabel}}</text>
-        </div>
-        <div class="icon-btn icon-del" style="left: {{keyboardDeleteLeft}}px;width: {{keyboardDeleteWidth}}px;" @click="onBtnClick('D')">
-          <img src="/components/InputMethod/assets/arc/del.png" class="icon-img" />
-        </div>
+      <div class="about-button" @click="openAbout">
+        <text class="secondary-button-text about-text">关于</text>
       </div>
-
-      <div class="candidate-panel" if="{{downFlag === 'down'}}">
-        <div style="position: absolute;left: {{(screenWidth - 192) / 2}}px;width: 192px;height: 263px;">
-          <list static class="list66">
-            <list-item type="waitingRows66" class="item66" for="{{itemArray in panelRows}}">
-              <div class="item column center" for="{{item in itemArray}}">
-                <input class="calbtn0" type="button" value="{{item.label}}" style="font-size: {{item.fontSize}}px;" @click="onPanelSelect(item.label)" />
-              </div>
-            </list-item>
-          </list>
-          <img static class="candidate-up" src="/components/InputMethod/assets/arc/up2.png" @click="onBtnClick('down')" />
-        </div>
-      </div>
+    </div>
+    <div class="guide-button" style="left: {{narrowLeft}}px;width: {{narrowWidth}}px;" @click="openGuide">
+      <text class="guide-button-text">使用说明</text>
     </div>
   </div>
 </template>
 
 <script>
-import storage from "@system.storage"
+import router from "@system.router"
 import vibrator from "@system.vibrator"
 import device from "@system.device"
-import router from "@system.router"
 import { applyResponsiveLayout } from "../../services/deviceLayout.js"
-import { estimateFormulaPreviewWidth, formatInputFormula, splitCharge } from "../../services/formulaFormat.js"
-
-const STORAGE_KEY_1 = "CHEMISTRY_TOOLBOX_HOME_TEXT_1"
-const STORAGE_KEY_2 = "CHEMISTRY_TOOLBOX_HOME_TEXT_2"
-const STORAGE_KEY_SEARCH_LEFT = "CHEMISTRY_TOOLBOX_SEARCH_LEFT"
-const STORAGE_KEY_SEARCH_RIGHT = "CHEMISTRY_TOOLBOX_SEARCH_RIGHT"
-const EDGE_THRESHOLD = 28
-const EXIT_SWIPE_DISTANCE = 58
-const EXIT_SWIPE_MAX_Y_DRIFT = 70
-
-const ELEMENT_KEYS = [
-  ["H", "O", "C", "N", "S", "P", "K", "Na", "Cl", "Ca", "As"],
-  ["Mg", "Al", "Zn", "Fe", "Cu", "Ag", "Ba", "Si", "Br", "Ti", "Sn"],
-  ["Li", "Be", "B", "F", "I", "Cr", "Mn", "Pb", "Hg", "Rb"]
-]
-
-const NUMBER_KEYS = [
-  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
-  ["(", ")", "+", "-", "2+", "3+", "2-", "3-", "4-"],
-  ["[", "]", "·", ".", "OH", "NH4", "SO4"]
-]
-
-const GROUP_PANEL_ITEMS = ["OH", "NO3", "SO4", "CO3", "HCO3", "NH4", "PO4", "MnO4", "ClO3"]
-const CHARGE_PANEL_ITEMS = ["+", "-", "2+", "3+", "4+", "2-", "3-", "4-", "0"]
-function buildRows(items) {
-  const rows = []
-  let row = []
-  for (let i = 0; i < items.length; i += 1) {
-    row.push({
-      label: items[i],
-      fontSize: getPanelFontSize(items[i])
-    })
-    if (row.length === 3) {
-      rows.push(row)
-      row = []
-    }
-  }
-  if (row.length > 0) {
-    rows.push(row)
-  }
-  return rows
-}
-
-function getPanelFontSize(value) {
-  const length = (value || "").length
-  if (length <= 2) {
-    return 28
-  }
-  if (length === 3) {
-    return 22
-  }
-  if (length === 4) {
-    return 18
-  }
-  return 15
-}
-
-function insertBeforeCharge(raw, token) {
-  const parts = splitCharge(raw)
-  return parts.body + token + parts.chargeRaw
-}
-
-function applyCharge(raw, token) {
-  const parts = splitCharge(raw)
-  if (!parts.body) {
-    return raw || ""
-  }
-  if (token === "0") {
-    return parts.body
-  }
-  const chargeMatch = token.match(/^(\d*)([+-])$/)
-  if (!chargeMatch) {
-    return raw
-  }
-  const digits = chargeMatch[1] || ""
-  const sign = chargeMatch[2]
-  return parts.body + "^" + digits + sign
-}
-
-function deleteLastInput(raw) {
-  const parts = splitCharge(raw)
-  if (parts.chargeRaw) {
-    return parts.body
-  }
-  return (raw || "").slice(0, -1)
-}
-
-function isChargeToken(token) {
-  return /^(\d*)([+-])$/.test(token) || token === "0"
-}
 
 export default {
   private: {
-    savedText1: "",
-    savedText2: "",
-    savedText1Display: "",
-    savedText2Display: "",
-    draftText: "",
-    draftDisplay: "",
-    activeInput: 1,
-    isEditing: false,
-    hideKeyboard: true,
-    homeMessage: "",
-    isSearching: false,
-    searchDotCount: 1,
-    downFlag: "",
-    numFlag: false,
-    percent66: 0,
     screenWidth: 212,
     screenHeight: 520,
     screenShape: "pill",
+    titleLeft: 28,
+    titleWidth: 156,
+    contentLeft: 16,
     contentWidth: 180,
-    narrowWidth: 176,
-    keyboardTopbarWidth: 192,
-    keyboardTopbarLeft: 10,
-    keyboardSearchLeft: 3,
-    keyboardSearchWidth: 186,
-    keyboardPreviewLeft: 15,
-    keyboardPreviewWidth: 144,
-    keyboardPreviewTextWidth: 226,
-    keyboardKeyPaddingLeft: 10,
-    keyboardKeyPaddingRight: 10,
-    keyboardInitialScrollLeft: 0,
-    previewMarqueeLeft: 0,
-    previewMarqueeEnabled: false,
-    previewMarqueeContentWidth: 226,
-    keyboardMoreLeft: 120,
-    keyboardGroupLeft: 9,
-    keyboardGroupWidth: 48,
-    keyboardNumberLeft: 70,
-    keyboardNumberWidth: 48,
-    keyboardDeleteLeft: 135,
-    keyboardDeleteWidth: 48,
-    topHint: "请输入分子式",
-    topLeftLabel: "组",
-    topMiddleLabel: "123",
-    quickKeyLabel: "OH",
-    panelRows: [],
-    keys: {
-      full: ELEMENT_KEYS,
-      sign: NUMBER_KEYS
-    }
+    narrowLeft: 18,
+    narrowWidth: 176
   },
 
   onInit() {
-    this.touchStartX = null
-    this.touchStartY = null
-    this.searchLoadingTimer = null
-    this.previewMarqueeTimer = null
-    this.didNavigateToResults = false
-    this.loadSavedText()
-    this.refreshKeyboardState()
-    applyResponsiveLayout(this, device, this.screenShape)
+    applyResponsiveLayout(this, device, "pill")
   },
 
   applyScreenLayout(layout) {
     this.screenWidth = layout.screenWidth
     this.screenHeight = layout.screenHeight
     this.screenShape = layout.shape
+    this.titleLeft = layout.titleLeft
+    this.titleWidth = layout.titleWidth
+    this.contentLeft = layout.contentLeft
     this.contentWidth = layout.contentWidth
+    this.narrowLeft = layout.narrowLeft
     this.narrowWidth = layout.narrowWidth
-    this.keyboardTopbarWidth = layout.keyboardTopbarWidth
-    this.keyboardTopbarLeft = layout.keyboardTopbarLeft
-    this.keyboardSearchLeft = layout.keyboardSearchLeft
-    this.keyboardSearchWidth = layout.keyboardSearchWidth
-    this.keyboardPreviewLeft = layout.keyboardPreviewLeft
-    this.keyboardPreviewWidth = layout.keyboardPreviewWidth
-    this.keyboardPreviewTextWidth = layout.keyboardPreviewTextWidth
-    this.keyboardKeyPaddingLeft = layout.keyboardKeyPaddingLeft
-    this.keyboardKeyPaddingRight = layout.keyboardKeyPaddingRight
-    this.keyboardInitialScrollLeft = layout.keyboardInitialScrollLeft
-    this.keyboardMoreLeft = layout.keyboardMoreLeft
-    this.keyboardGroupLeft = layout.keyboardGroupLeft
-    this.keyboardGroupWidth = layout.keyboardGroupWidth
-    this.keyboardNumberLeft = layout.keyboardNumberLeft
-    this.keyboardNumberWidth = layout.keyboardNumberWidth
-    this.keyboardDeleteLeft = layout.keyboardDeleteLeft
-    this.keyboardDeleteWidth = layout.keyboardDeleteWidth
-    this.updatePreviewMarqueeState()
   },
 
-  onShow() {
-    if (this.didNavigateToResults) {
-      this.didNavigateToResults = false
-      this.clearSearchLoading(true)
-    }
-  },
-
-  onHide() {
-    this.stopPreviewMarquee()
-    if (!this.didNavigateToResults) {
-      this.clearSearchLoading(true)
-    }
-  },
-
-  onDestroy() {
-    this.stopPreviewMarquee()
-    this.clearSearchLoading(true)
-  },
-
-  loadSavedText() {
-    storage.get({
-      key: STORAGE_KEY_1,
-      success: (data) => {
-        this.setSavedText(1, data || "")
-      },
-      fail: () => {
-        this.setSavedText(1, "")
-      }
-    })
-    storage.get({
-      key: STORAGE_KEY_2,
-      success: (data) => {
-        this.setSavedText(2, data || "")
-      },
-      fail: () => {
-        this.setSavedText(2, "")
-      }
-    })
-  },
-
-  openEditor() {
-    this.clearSearchLoading(true)
-    this.activeInput = 1
-    this.setDraftText(this.savedText1 || "")
-    this.isEditing = true
-    this.hideKeyboard = false
-    this.downFlag = ""
-    this.scrollEditorToEnd()
-    this.scrollKeyboardToInitial()
-    this.startPreviewMarquee()
-  },
-
-  openSecondEditor() {
-    this.clearSearchLoading(true)
-    this.activeInput = 2
-    this.setDraftText(this.savedText2 || "")
-    this.isEditing = true
-    this.hideKeyboard = false
-    this.downFlag = ""
-    this.scrollEditorToEnd()
-    this.scrollKeyboardToInitial()
-    this.startPreviewMarquee()
-  },
-
-  showKeyboard() {
-    this.hideKeyboard = false
-    this.scrollEditorToEnd()
-    this.scrollKeyboardToInitial()
-    this.startPreviewMarquee()
-  },
-
-  hideEditorKeyboard() {
-    this.hideKeyboard = true
-    this.downFlag = ""
-    this.stopPreviewMarquee()
-    this.scrollEditorToEnd()
-  },
-
-  setDraftText(value) {
-    this.draftText = value || ""
-    this.draftDisplay = formatInputFormula(this.draftText)
-    this.updatePreviewMarqueeState()
-  },
-
-  setSavedText(inputIndex, value) {
-    const raw = value || ""
-    if (inputIndex === 2) {
-      this.savedText2 = raw
-      this.savedText2Display = formatInputFormula(raw)
-      return
-    }
-    this.savedText1 = raw
-    this.savedText1Display = formatInputFormula(raw)
-  },
-
-  insertToken(token) {
-    if (!token) {
-      return
-    }
-    if (isChargeToken(token)) {
-      this.setDraftText(applyCharge(this.draftText, token))
-    } else {
-      this.setDraftText(insertBeforeCharge(this.draftText, token))
-    }
-    this.downFlag = ""
-    this.scrollEditorToEnd()
-    this.scrollFormulaPreviewToEnd()
-  },
-
-  onSelect(key) {
+  openPeriodic() {
     this.onVibrate()
-    this.insertToken(key)
-  },
-
-  onBtnClick(sign) {
-    this.onVibrate()
-    switch (sign) {
-      case "D":
-        this.setDraftText(deleteLastInput(this.draftText))
-        this.downFlag = ""
-        this.scrollEditorToEnd()
-        this.scrollFormulaPreviewToEnd()
-        break
-      case "down":
-        this.downFlag = this.downFlag === "down" ? "" : "down"
-        break
-      case "switchNum":
-        this.numFlag = true
-        this.downFlag = ""
-        this.refreshKeyboardState()
-        break
-      case "switchElements":
-        this.numFlag = false
-        this.downFlag = ""
-        this.refreshKeyboardState()
-        break
-      case "toggleGroups":
-        this.numFlag = false
-        this.refreshKeyboardState()
-        this.downFlag = this.downFlag === "down" ? "" : "down"
-        break
-      case "toggleCharges":
-        this.numFlag = true
-        this.refreshKeyboardState()
-        this.downFlag = this.downFlag === "down" ? "" : "down"
-        break
-      case "quickGroup":
-        this.insertToken(this.quickKeyLabel)
-        break
-      default:
-        break
-    }
-  },
-
-  onPrimaryTopAction() {
-    if (this.numFlag) {
-      this.onBtnClick("switchElements")
-      return
-    }
-    this.onBtnClick("toggleGroups")
-  },
-
-  onSecondaryTopAction() {
-    if (this.numFlag) {
-      this.onBtnClick("toggleCharges")
-      return
-    }
-    this.onBtnClick("switchNum")
-  },
-
-  onPanelSelect(item) {
-    this.onVibrate()
-    this.insertToken(item)
-  },
-
-  refreshKeyboardState() {
-    this.keys.full = ELEMENT_KEYS
-    this.keys.sign = NUMBER_KEYS
-    if (this.numFlag) {
-      this.topLeftLabel = "元"
-      this.topMiddleLabel = "荷"
-      this.topHint = "数字 / 电荷"
-      this.quickKeyLabel = "OH"
-      this.panelRows = buildRows(CHARGE_PANEL_ITEMS)
-      this.updatePreviewMarqueeState()
-      return
-    }
-    this.topLeftLabel = "组"
-    this.topMiddleLabel = "123"
-    this.topHint = "元素 / 基团"
-    this.quickKeyLabel = "OH"
-    this.panelRows = buildRows(GROUP_PANEL_ITEMS)
-    this.updatePreviewMarqueeState()
-  },
-
-  handelScroll(event) {
-    const value = parseInt((event.scrollX / 633) * 100)
-    this.percent66 = value <= 100 ? value : 100
-  },
-
-  handleTouchStart(eve) {
-    if (!this.isEditing) {
-      return
-    }
-    this.touchStartX = this.getPoint(eve, "x")
-    this.touchStartY = this.getPoint(eve, "y")
-  },
-
-  handleTouchEnd(eve) {
-    if (!this.isEditing) {
-      return
-    }
-
-    const endX = this.getPoint(eve, "x")
-    const endY = this.getPoint(eve, "y")
-    if (this.touchStartX === null || endX === null) {
-      return
-    }
-
-    const deltaX = endX - this.touchStartX
-    const deltaY = Math.abs((endY || 0) - (this.touchStartY || 0))
-    if (this.touchStartX <= EDGE_THRESHOLD && deltaX >= EXIT_SWIPE_DISTANCE && deltaY <= EXIT_SWIPE_MAX_Y_DRIFT && this.draftText) {
-      this.saveAndCloseEditor()
-    }
-
-    this.touchStartX = null
-    this.touchStartY = null
-  },
-
-  saveAndCloseEditor() {
-    if (this.activeInput === 2) {
-      this.setSavedText(2, this.draftText)
-    } else {
-      this.setSavedText(1, this.draftText)
-    }
-    this.hideKeyboard = true
-    this.isEditing = false
-    this.downFlag = ""
-    this.stopPreviewMarquee()
-    storage.set({
-      key: this.activeInput === 2 ? STORAGE_KEY_2 : STORAGE_KEY_1,
-      value: this.draftText
-    })
-  },
-
-  clearCurrentInput() {
-    this.onVibrate()
-    this.setDraftText("")
-    if (this.activeInput === 2) {
-      this.setSavedText(2, "")
-    } else {
-      this.setSavedText(1, "")
-    }
-    storage.set({
-      key: this.activeInput === 2 ? STORAGE_KEY_2 : STORAGE_KEY_1,
-      value: ""
-    })
-    this.downFlag = ""
-    this.refreshKeyboardState()
-  },
-
-  normalizeFormula(value) {
-    return (value || "").replace(/\s+/g, "")
-  },
-
-  searchEquations() {
-    if (this.isSearching) {
-      return
-    }
-
-    const formula1 = this.normalizeFormula(this.savedText1)
-    const formula2 = this.normalizeFormula(this.savedText2)
-
-    if (!formula1 || !formula2) {
-      this.clearSearchLoading(false)
-      this.homeMessage = "请先输入两个分子式"
-      return
-    }
-
-    this.startSearchLoading()
-    this.saveSearchInputs(formula1, formula2)
-    this.didNavigateToResults = true
     router.push({
-      uri: "/pages/results"
+      uri: "/pages/periodic"
     })
   },
 
-  saveSearchInputs(formula1, formula2) {
-    storage.set({
-      key: STORAGE_KEY_SEARCH_LEFT,
-      value: formula1
-    })
-    storage.set({
-      key: STORAGE_KEY_SEARCH_RIGHT,
-      value: formula2
+  openSearch() {
+    this.onVibrate()
+    router.push({
+      uri: "/pages/search"
     })
   },
 
@@ -613,148 +95,6 @@ export default {
     })
   },
 
-  startSearchLoading() {
-    this.clearSearchLoading(false)
-    this.isSearching = true
-    this.searchDotCount = 1
-    this.updateSearchLoadingText()
-    this.queueSearchLoadingTick()
-  },
-
-  queueSearchLoadingTick() {
-    this.searchLoadingTimer = setTimeout(() => {
-      if (!this.isSearching) {
-        return
-      }
-      this.searchDotCount = this.searchDotCount >= 6 ? 1 : this.searchDotCount + 1
-      this.updateSearchLoadingText()
-      this.queueSearchLoadingTick()
-    }, 500)
-  },
-
-  updateSearchLoadingText() {
-    let dots = ""
-    for (let i = 0; i < this.searchDotCount; i += 1) {
-      dots += "."
-    }
-    this.homeMessage = "搜索中" + dots
-  },
-
-  clearSearchLoading(clearMessage) {
-    if (this.searchLoadingTimer) {
-      clearTimeout(this.searchLoadingTimer)
-      this.searchLoadingTimer = null
-    }
-    this.isSearching = false
-    this.searchDotCount = 1
-    if (clearMessage) {
-      this.homeMessage = ""
-    }
-  },
-
-  getPoint(eve, axis) {
-    if (!eve) {
-      return null
-    }
-    const point = (eve.touches && eve.touches[0]) || (eve.changedTouches && eve.changedTouches[0]) || eve
-    const candidates = axis === "x"
-      ? ["globalX", "screenX", "clientX", "pageX", "x"]
-      : ["globalY", "screenY", "clientY", "pageY", "y"]
-    for (let i = 0; i < candidates.length; i += 1) {
-      const key = candidates[i]
-      if (typeof point[key] === "number") {
-        return point[key]
-      }
-    }
-    return null
-  },
-
-  scrollFormulaPreviewToEnd() {
-    if (this.previewMarqueeEnabled) {
-      return
-    }
-    setTimeout(() => {
-      if (this.$element("formulaPreview")) {
-        this.$element("formulaPreview").scrollTo({
-          top: 0,
-          left: 9999,
-          behavior: "smooth"
-        })
-      }
-    }, 0)
-  },
-
-  startPreviewMarquee() {
-    this.stopPreviewMarquee()
-    this.updatePreviewMarqueeState()
-  },
-
-  schedulePreviewMarquee() {
-    this.previewMarqueeTimer = setTimeout(() => {
-      if (!this.isEditing || this.hideKeyboard) {
-        this.previewMarqueeTimer = null
-        return
-      }
-      if (!this.previewMarqueeEnabled) {
-        this.previewMarqueeTimer = null
-        return
-      }
-      const nextLeft = this.previewMarqueeLeft - 8
-      if (nextLeft < -this.previewMarqueeContentWidth) {
-        this.previewMarqueeLeft = this.keyboardPreviewWidth
-      } else {
-        this.previewMarqueeLeft = nextLeft
-      }
-      this.schedulePreviewMarquee()
-    }, 90)
-  },
-
-  stopPreviewMarquee() {
-    if (this.previewMarqueeTimer) {
-      clearTimeout(this.previewMarqueeTimer)
-      this.previewMarqueeTimer = null
-    }
-  },
-
-  updatePreviewMarqueeState() {
-    const textWidth = estimateFormulaPreviewWidth(this.draftDisplay || this.topHint)
-    this.previewMarqueeEnabled = textWidth > this.keyboardPreviewWidth
-    this.previewMarqueeContentWidth = this.previewMarqueeEnabled ? textWidth + 18 : this.keyboardPreviewWidth
-    if (!this.previewMarqueeEnabled) {
-      this.previewMarqueeLeft = 0
-      this.stopPreviewMarquee()
-      return
-    }
-    if (this.isEditing && !this.hideKeyboard && !this.previewMarqueeTimer) {
-      this.previewMarqueeLeft = this.keyboardPreviewWidth
-      this.schedulePreviewMarquee()
-    }
-  },
-
-  scrollEditorToEnd() {
-    setTimeout(() => {
-      if (this.isEditing && this.$element("editorScroll")) {
-        this.$element("editorScroll").scrollTo({
-          top: 0,
-          left: 9999,
-          behavior: "smooth"
-        })
-      }
-    }, 0)
-  },
-
-  scrollKeyboardToInitial() {
-    setTimeout(() => {
-      if (this.isEditing && !this.hideKeyboard && this.$element("keyboard66")) {
-        this.$element("keyboard66").scrollTo({
-          top: 0,
-          left: this.keyboardInitialScrollLeft,
-          behavior: "smooth"
-        })
-      }
-    }, 0)
-  },
-
   onVibrate() {
     vibrator.vibrate({ mode: "short" })
   }
@@ -762,72 +102,87 @@ export default {
 </script>
 
 <style>
-.chem-root {
+.home-page {
   width: 100%;
   height: 100%;
   background-color: #f4f7f5;
 }
 
-.home-view {
-  width: 100%;
-  height: 100%;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding-left: 14px;
-  padding-right: 14px;
-}
-
 .home-title {
-  width: 100%;
-  font-size: 32px;
+  position: absolute;
+  top: 62px;
+  height: 42px;
+  font-size: 30px;
   line-height: 42px;
   font-weight: bold;
   color: #16231f;
   text-align: center;
 }
 
-.home-input {
-  width: 100%;
-  height: 54px;
-  margin-top: 24px;
-  padding-left: 18px;
-  padding-right: 18px;
-  border-radius: 27px;
-  background-color: #e3eee9;
-  border: 2px solid #c7d9d1;
-  align-items: center;
-  justify-content: center;
+.main-actions {
+  position: absolute;
+  top: 128px;
+  flex-direction: column;
 }
 
-.second-input {
-  margin-top: 12px;
+.periodic-button {
+  width: 100%;
+  height: 82px;
+  border-radius: 24px;
+  background-color: #e3eee9;
+  border: 2px solid #b9d1c7;
+  justify-content: center;
+  align-items: center;
+}
+
+.periodic-button-title {
+  font-size: 26px;
+  line-height: 32px;
+  color: #16231f;
+  font-weight: bold;
+  text-align: center;
+}
+
+.periodic-button-subtitle {
+  margin-top: 2px;
+  font-size: 15px;
+  line-height: 20px;
+  color: #5d7068;
+  text-align: center;
 }
 
 .search-button {
-  width: 136px;
-  height: 48px;
-  margin-top: 20px;
+  width: 100%;
+  height: 70px;
+  margin-top: 14px;
   border-radius: 24px;
   background-color: #1e9b6c;
   border: 2px solid #157d58;
-  align-items: center;
   justify-content: center;
+  align-items: center;
 }
 
-.search-button-text {
+.search-button-title {
+  font-size: 26px;
+  line-height: 32px;
   color: #ffffff;
-  font-size: 24px;
-  line-height: 30px;
   font-weight: bold;
+  text-align: center;
+}
+
+.search-button-subtitle {
+  margin-top: 1px;
+  font-size: 15px;
+  line-height: 20px;
+  color: rgba(255, 255, 255, 0.82);
+  text-align: center;
 }
 
 .secondary-actions {
-  width: 176px;
+  position: absolute;
+  top: 314px;
   height: 44px;
-  margin-top: 12px;
   flex-direction: row;
-  align-items: center;
   justify-content: center;
 }
 
@@ -837,15 +192,8 @@ export default {
   border-radius: 22px;
   background-color: rgba(255, 255, 255, 0);
   border: 2px solid #d59b35;
-  align-items: center;
   justify-content: center;
-}
-
-.sponsor-button-text {
-  color: #9b6a17;
-  font-size: 20px;
-  line-height: 26px;
-  font-weight: bold;
+  align-items: center;
 }
 
 .about-button {
@@ -855,26 +203,34 @@ export default {
   border-radius: 22px;
   background-color: rgba(255, 255, 255, 0);
   border: 2px solid #9aa7a1;
-  align-items: center;
   justify-content: center;
+  align-items: center;
 }
 
-.about-button-text {
-  color: #5e6c66;
+.secondary-button-text {
   font-size: 20px;
   line-height: 26px;
   font-weight: bold;
+  text-align: center;
+}
+
+.sponsor-text {
+  color: #9b6a17;
+}
+
+.about-text {
+  color: #5e6c66;
 }
 
 .guide-button {
-  width: 176px;
-  height: 40px;
-  margin-top: 10px;
-  border-radius: 20px;
+  position: absolute;
+  top: 372px;
+  height: 42px;
+  border-radius: 21px;
   background-color: #edf3f0;
   border: 2px solid #c7d9d1;
-  align-items: center;
   justify-content: center;
+  align-items: center;
 }
 
 .guide-button-text {
@@ -883,292 +239,5 @@ export default {
   line-height: 24px;
   font-weight: bold;
   text-align: center;
-}
-
-.home-input-text {
-  width: 100%;
-  font-size: 22px;
-  line-height: 30px;
-  color: #182b25;
-  text-align: center;
-  lines: 1;
-  text-overflow: ellipsis;
-}
-
-.home-placeholder {
-  font-size: 22px;
-  line-height: 30px;
-  color: #75847e;
-  text-align: center;
-}
-
-.home-hint {
-  margin-top: 12px;
-  font-size: 18px;
-  line-height: 24px;
-  color: #8d4f3a;
-  text-align: center;
-}
-
-.editor-view {
-  width: 100%;
-  height: 100%;
-  background-color: #f4f7f5;
-  flex-direction: column;
-  align-items: center;
-  padding: 18px 8px 0px;
-}
-
-.editor-input {
-  width: 100%;
-  height: 72px;
-  padding-left: 16px;
-  padding-right: 16px;
-  border-radius: 24px;
-  background-color: #14251f;
-  border: 2px solid #2d5146;
-  align-items: center;
-  justify-content: center;
-}
-
-.editor-scroll {
-  width: 100%;
-  height: 46px;
-}
-
-.editor-content {
-  height: 46px;
-  flex-direction: row;
-  align-items: center;
-}
-
-.editor-text {
-  font-size: 28px;
-  line-height: 38px;
-  color: #ffffff;
-  font-weight: bold;
-  lines: 1;
-}
-
-.editor-placeholder {
-  font-size: 28px;
-  line-height: 38px;
-  color: rgba(255, 255, 255, 0.42);
-}
-
-.cursor {
-  width: 3px;
-  height: 34px;
-  margin-left: 4px;
-  background-color: #ffffff;
-  border-radius: 2px;
-}
-
-.editor-actions {
-  width: 174px;
-  height: 44px;
-  margin-top: 8px;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-}
-
-.enter-button {
-  width: 80px;
-  height: 44px;
-  border-radius: 22px;
-  background-color: #1e9b6c;
-  color: #ffffff;
-  font-size: 16px;
-  line-height: 44px;
-  text-align: center;
-}
-
-.clear-button {
-  width: 80px;
-  height: 44px;
-  margin-left: 14px;
-  border-radius: 22px;
-  background-color: #d34235;
-  color: #ffffff;
-  font-size: 16px;
-  line-height: 44px;
-  text-align: center;
-  font-weight: bold;
-}
-
-.keyboard-page {
-  width: 100%;
-  height: 305px;
-  position: absolute;
-  left: 0px;
-  bottom: 0px;
-  border: 4px solid #000000;
-  border-radius: 28px;
-  background-color: #000000;
-}
-
-.keyboard-bg {
-  position: absolute;
-  left: 0px;
-  top: 34px;
-  width: 100%;
-  height: 276px;
-}
-
-#keyboard66 {
-  position: absolute;
-  left: 0px;
-  top: 82px;
-  width: 100%;
-  height: 170px;
-}
-
-.arc-topbar {
-  position: absolute;
-  top: 0px;
-  width: 192px;
-  height: 110px;
-}
-
-.arc-search {
-  position: absolute;
-  left: 3px;
-  top: 47px;
-  width: 186px;
-  height: 60px;
-}
-
-.candidate-scroll {
-  position: absolute;
-  left: 15px;
-  top: 56px;
-  width: 144px;
-  height: 42px;
-}
-
-.candidate-more {
-  position: absolute;
-  left: 120px;
-  top: 57px;
-  width: 60px;
-  height: 40px;
-}
-
-.formula-preview {
-  text-align: left;
-}
-
-.icon-btn {
-  position: absolute;
-  background-color: #000000;
-  border-radius: 12px;
-  align-items: center;
-  justify-content: center;
-}
-
-.icon-img {
-  width: 100%;
-  height: 100%;
-}
-
-.top-btn-text {
-  color: #ffffff;
-  font-size: 20px;
-  line-height: 26px;
-  font-weight: bold;
-  text-align: center;
-}
-
-.icon-lang {
-  top: 0px;
-  left: 9px;
-  width: 48px;
-  height: 42px;
-}
-
-.icon-num {
-  position: absolute;
-  left: 70px;
-  top: 0px;
-  width: 52px;
-  height: 42px;
-}
-
-.icon-del {
-  position: absolute;
-  left: 135px;
-  top: 0px;
-  width: 48px;
-  height: 42px;
-}
-
-.candidate-panel {
-  position: absolute;
-  top: 47px;
-  width: 100%;
-  height: 263px;
-  background-color: #000000;
-}
-
-.candidate-up {
-  position: absolute;
-  top: 196px;
-  left: 56px;
-  width: 80px;
-  height: 60px;
-}
-
-.item {
-  height: 52px;
-  flex: 1;
-}
-
-.calbtn0 {
-  color: #ffffff;
-  font-size: 28px;
-  background-color: rgba(38, 38, 38, 0);
-  border-radius: 0px;
-  height: 52px;
-  width: 52px;
-  text-align: center;
-}
-
-.calbtn02 {
-  color: #ffffff;
-  background-color: rgba(38, 38, 38, 0);
-  border-radius: 0px;
-  font-size: 32px;
-  text-align: center;
-  height: 42px;
-}
-
-.calbtn66 {
-  color: #ffffff;
-  font-size: 32px;
-  font-weight: bold;
-  background-color: #262626;
-  margin-right: 3px;
-  width: 60px;
-  height: 60px;
-  border-radius: 30px;
-  text-align: center;
-  border: 3px solid rgba(255, 255, 255, 0.06);
-}
-
-.list66 {
-  position: absolute;
-  left: 3px;
-  top: 0px;
-  width: 186px;
-  height: 186px;
-  border-radius: 30px;
-  background-color: #262626;
-  border: 3px solid rgba(255, 255, 255, 0.06);
-  padding: 10px;
-}
-
-.item66 {
-  height: 42px;
 }
 </style>

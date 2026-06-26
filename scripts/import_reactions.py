@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SOURCE_PDF = Path(os.environ["USERPROFILE"]) / "Downloads" / "最全高中化学方程式分类汇总.pdf"
 SOURCE_TXT = Path(os.environ["USERPROFILE"]) / "Downloads" / "最全高中化学方程式分类汇总.txt"
 OUTPUT_JS = ROOT / "src" / "data" / "generatedReactionText.js"
+OUTPUT_INDEX_JS = ROOT / "src" / "data" / "generatedReactionIndex.js"
 
 EQUATION_FIXES = {
     "K2CO3+CaCl2->CaCO3↓+2KC": "K2CO3+CaCl2 -> CaCO3↓+2KCl",
@@ -140,6 +141,11 @@ def extract_formulas(equation: str) -> list[str]:
     return values
 
 
+def normalize_formula(value: str) -> str:
+    normalized = re.sub(r"\s+", "", value or "").lower()
+    return re.sub(r"\^(\d*[+-])$", r"\1", normalized)
+
+
 def load_source_text() -> str:
     if SOURCE_PDF.exists():
         try:
@@ -153,6 +159,43 @@ def load_source_text() -> str:
         except Exception:
             pass
     return SOURCE_TXT.read_text(encoding="utf-8")
+
+
+def load_existing_generated_reactions() -> list[dict]:
+    if not OUTPUT_JS.exists():
+        return []
+
+    source = OUTPUT_JS.read_text(encoding="utf-8")
+    match = re.search(r"export const generatedReactionText = (.*)\s*$", source, re.S)
+    if not match:
+        return []
+
+    payload = match.group(1).strip()
+    if payload.endswith(";"):
+        payload = payload[:-1]
+
+    text = json.loads(payload)
+    reactions: list[dict] = []
+    for index, line in enumerate(text.splitlines()):
+        divider = line.find("\t")
+        if divider <= 0:
+            continue
+        formulas = [formula for formula in line[:divider].split(",") if formula]
+        equation = line[divider + 1 :]
+        if len(formulas) < 2 or not equation:
+            continue
+        reactions.append(
+            {
+                "id": f"generated_{index}",
+                "formulas": formulas,
+                "equation": equation,
+                "type": "",
+                "conditions": "",
+                "phenomenon": "",
+                "source": "generatedReactionText.js",
+            }
+        )
+    return reactions
 
 
 def build_candidates(lines: list[str]) -> list[str]:
@@ -185,7 +228,14 @@ def build_candidates(lines: list[str]) -> list[str]:
 
 
 def load_reactions() -> list[dict]:
-    text = load_source_text()
+    try:
+        text = load_source_text()
+    except FileNotFoundError:
+        existing_reactions = load_existing_generated_reactions()
+        if existing_reactions:
+            return existing_reactions
+        raise
+
     lines = text.splitlines()
     candidates = build_candidates(lines)
 
@@ -229,10 +279,42 @@ def write_output(reactions: list[dict]) -> None:
     OUTPUT_JS.write_text(f"export const generatedReactionText = {payload}\n", encoding="utf-8")
 
 
+def build_formula_index(reactions: list[dict]) -> dict[str, list[int]]:
+    index: dict[str, list[int]] = {}
+    for reaction_index, reaction in enumerate(reactions):
+        added: set[str] = set()
+        for formula in reaction["formulas"]:
+            normalized = normalize_formula(formula)
+            if not normalized or normalized in added:
+                continue
+            added.add(normalized)
+            index.setdefault(normalized, []).append(reaction_index)
+    return dict(sorted(index.items()))
+
+
+def write_index_output(reactions: list[dict]) -> None:
+    equations = [reaction["equation"] for reaction in reactions]
+    formula_index = build_formula_index(reactions)
+    equations_payload = json.dumps(equations, ensure_ascii=False, separators=(",", ":"))
+    index_payload = json.dumps(formula_index, ensure_ascii=False, separators=(",", ":"))
+    OUTPUT_INDEX_JS.write_text(
+        "export const generatedEquations = "
+        + equations_payload
+        + "\nexport const generatedFormulaIndex = "
+        + index_payload
+        + "\n",
+        encoding="utf-8",
+    )
+
+
 def main() -> None:
     reactions = load_reactions()
     write_output(reactions)
-    print(f"Generated {len(reactions)} reactions -> {OUTPUT_JS}")
+    write_index_output(reactions)
+    from build_reaction_database import main as build_reaction_database
+
+    build_reaction_database()
+    print(f"Generated {len(reactions)} source reactions -> {OUTPUT_JS}, {OUTPUT_INDEX_JS}")
 
 
 if __name__ == "__main__":

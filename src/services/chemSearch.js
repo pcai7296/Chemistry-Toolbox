@@ -1,44 +1,9 @@
 import { reactions, normalizeEquation } from "../data/reactions.js"
-import { generatedReactionText } from "../data/generatedReactionText.js"
+import { generatedEquations, generatedFormulaIndex, generatedMetadata } from "../data/generatedReactionIndex.js"
 
 function normalizeFormula(value) {
   const normalized = (value || "").replace(/\s+/g, "").toLowerCase()
   return normalized.replace(/\^(\d*[+-])$/, "$1")
-}
-
-function parseGeneratedReactions() {
-  const source = generatedReactionText || ""
-  const results = []
-  let start = 0
-  let index = 0
-
-  while (start < source.length) {
-    let end = source.indexOf("\n", start)
-    if (end === -1) {
-      end = source.length
-    }
-
-    const line = source.slice(start, end)
-    const divider = line.indexOf("\t")
-    if (divider > 0) {
-      const formulas = line.slice(0, divider)
-      const equation = line.slice(divider + 1)
-      results.push({
-        id: "generated_" + index,
-        formulas: formulas.split(","),
-        equation,
-        type: "",
-        conditions: "",
-        phenomenon: "",
-        generated: true
-      })
-    }
-
-    start = end + 1
-    index += 1
-  }
-
-  return results
 }
 
 function addToIndex(index, formula, reaction) {
@@ -77,8 +42,53 @@ function buildMatchSet(items) {
   return result
 }
 
-const searchableReactions = reactions.concat(parseGeneratedReactions())
-const formulaIndex = buildFormulaIndex(searchableReactions)
+function buildEquationSet(items) {
+  const result = {}
+  for (let i = 0; i < items.length; i += 1) {
+    result[normalizeEquation(items[i].equation)] = true
+  }
+  return result
+}
+
+function intersectSortedIndexes(leftItems, rightItems) {
+  const results = []
+  let leftIndex = 0
+  let rightIndex = 0
+
+  while (leftIndex < leftItems.length && rightIndex < rightItems.length) {
+    const leftValue = leftItems[leftIndex]
+    const rightValue = rightItems[rightIndex]
+    if (leftValue === rightValue) {
+      results.push(leftValue)
+      leftIndex += 1
+      rightIndex += 1
+    } else if (leftValue < rightValue) {
+      leftIndex += 1
+    } else {
+      rightIndex += 1
+    }
+  }
+
+  return results
+}
+
+function createGeneratedReaction(index) {
+  const metadata = generatedMetadata[index] || {}
+  const isArrayMetadata = metadata instanceof Array
+  return {
+    id: "generated_" + index,
+    equation: generatedEquations[index] || "",
+    type: isArrayMetadata ? (metadata[0] || "") : (metadata.type || ""),
+    conditions: isArrayMetadata ? (metadata[1] || "") : (metadata.conditions || ""),
+    phenomenon: isArrayMetadata ? (metadata[2] || "") : (metadata.phenomenon || ""),
+    commonness: isArrayMetadata ? (metadata[3] || "") : (metadata.commonness || ""),
+    visibility: isArrayMetadata ? (metadata[4] || "") : (metadata.visibility || ""),
+    generated: true
+  }
+}
+
+const formulaIndex = buildFormulaIndex(reactions)
+const curatedEquationKeys = buildEquationSet(reactions)
 
 export function searchReactionsByPair(formulaA, formulaB) {
   const left = normalizeFormula(formulaA)
@@ -88,11 +98,11 @@ export function searchReactionsByPair(formulaA, formulaB) {
     return []
   }
 
+  const results = []
+  const seenEquations = {}
   const leftMatches = formulaIndex[left] || []
   const rightMatches = formulaIndex[right] || []
   const rightSet = left === right ? null : buildMatchSet(rightMatches)
-  const results = []
-  const seenEquations = {}
 
   for (let i = 0; i < leftMatches.length; i += 1) {
     const reaction = leftMatches[i]
@@ -102,16 +112,28 @@ export function searchReactionsByPair(formulaA, formulaB) {
     }
 
     const key = normalizeEquation(reaction.equation)
-    if (reaction.generated) {
-      if (seenEquations[key]) {
-        continue
-      }
-      seenEquations[key] = true
-    } else {
-      seenEquations[key] = true
+    seenEquations[key] = true
+    results.push(reaction)
+  }
+
+  const leftGenerated = generatedFormulaIndex[left] || []
+  const rightGenerated = generatedFormulaIndex[right] || []
+  const generatedMatches = left === right ? leftGenerated : intersectSortedIndexes(leftGenerated, rightGenerated)
+
+  for (let i = 0; i < generatedMatches.length; i += 1) {
+    const reactionIndex = generatedMatches[i]
+    const equation = generatedEquations[reactionIndex]
+    if (!equation) {
+      continue
     }
 
-    results.push(reaction)
+    const key = normalizeEquation(equation)
+    if (seenEquations[key] || curatedEquationKeys[key]) {
+      continue
+    }
+
+    seenEquations[key] = true
+    results.push(createGeneratedReaction(reactionIndex))
   }
 
   return results

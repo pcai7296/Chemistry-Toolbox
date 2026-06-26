@@ -1,0 +1,550 @@
+<template>
+  <div class="periodic-page" style="width: {{screenWidth}}px;height: {{screenHeight}}px;">
+    <scroll id="periodicScroll" class="periodic-scroll" scroll-x="{{true}}" scroll-y="{{true}}" bounces="{{false}}" onscroll="handleTableScroll" style="left: 0px;top: 0px;width: {{screenWidth}}px;height: {{screenHeight}}px;">
+      <div class="periodic-content" style="width: {{tableContentWidth}}px;height: {{tableContentHeight}}px;">
+        <img class="periodic-image" src="/common/periodic-table.png" style="left: {{tablePaddingLeft}}px;top: {{tablePaddingTop}}px;width: {{tableWidth}}px;height: {{tableHeight}}px;" />
+      </div>
+    </scroll>
+    <div class="focus-box" style="left: {{focusLeft}}px;top: {{focusTop}}px;width: {{focusSize}}px;height: {{focusSize}}px;"></div>
+    <div class="periodic-touch-layer" style="left: {{scrollLeft}}px;top: {{scrollTop}}px;width: {{scrollWidth}}px;height: {{scrollHeight}}px;" @touchstart="handleTableTouchStart" @touchmove="handleTableTouchMove" @touchend="handleTableTouchEnd">
+    </div>
+    <text class="periodic-back" style="left: {{topButtonLeft}}px;width: {{topButtonWidth}}px;" @click="goBack">返回</text>
+    <text class="periodic-title" style="left: {{titleLeft}}px;width: {{titleWidth}}px;">周期表</text>
+    <text class="focus-action" style="left: {{focusActionLeft}}px;top: {{focusActionTop}}px;width: {{focusActionWidth}}px;" @click="showFocusedElement">查看</text>
+    <div class="element-panel" if="{{detailVisible}}" style="left: {{panelLeft}}px;top: {{panelTop}}px;width: {{panelWidth}}px;height: {{panelHeight}}px;">
+      <text class="element-close" @click="closeElementPanel">关闭</text>
+      <text class="element-title">{{selectedTitle}}</text>
+      <text class="element-subtitle">{{selectedSubtitle}}</text>
+      <list class="element-info-list" style="height: {{panelListHeight}}px;">
+        <list-item type="elementInfo" for="{{selectedRows}}" class="element-info-item" style="{{$item.itemStyle}}">
+          <text class="element-info-label" style="{{$item.labelStyle}}">{{$item.label}}</text>
+          <text class="element-info-value" style="{{$item.valueStyle}}">{{$item.value}}</text>
+        </list-item>
+      </list>
+    </div>
+  </div>
+</template>
+
+<script>
+import router from "@system.router"
+import device from "@system.device"
+import { applyResponsiveLayout } from "../../services/deviceLayout.js"
+import { compactPeriodicElements } from "../../data/periodicElementsCompact.js"
+
+const TABLE_COLUMNS = 18
+const TABLE_ROWS = 9
+const TABLE_ASPECT = TABLE_COLUMNS / TABLE_ROWS
+const VIEW_AREA_SCALE = 12
+const TABLE_IMAGE_WIDTH = 1252
+const TABLE_IMAGE_HEIGHT = 626
+const SOURCE_TILE_GAP = 6
+
+let compactElementLines = null
+let compactElementMap = null
+
+function getCompactElementLines() {
+  if (!compactElementLines) {
+    compactElementLines = compactPeriodicElements.split("\n")
+  }
+  return compactElementLines
+}
+
+function getCompactElementMap() {
+  if (!compactElementMap) {
+    const lines = getCompactElementLines()
+    compactElementMap = {}
+    for (let i = 0; i < lines.length; i += 1) {
+      const parts = lines[i].split("\t")
+      compactElementMap[parts[7] + ":" + parts[8]] = parts
+    }
+  }
+  return compactElementMap
+}
+
+function parseCompactElement(parts) {
+  return {
+    atomicNumber: parts[0],
+    symbol: parts[1],
+    nameZh: parts[2],
+    nameEn: parts[3],
+    atomicMass: parts[4],
+    period: parts[5],
+    group: parts[6],
+    tableRow: Number(parts[7]),
+    tableCol: Number(parts[8]),
+    block: parts[9],
+    family: parts[10],
+    category: parts[11],
+    electronConfig: parts[12],
+    oxidationStates: parts[13],
+    electronegativity: parts[14],
+    atomicRadius: parts[15],
+    ionRadius: parts[16],
+    ionizationEnergy: parts[17],
+    electronAffinity: parts[18],
+    standardState: parts[19],
+    existence: parts[20],
+    bondingType: parts[21],
+    meltingPoint: parts[22],
+    boilingPoint: parts[23],
+    density: parts[24],
+    yearDiscovered: parts[25]
+  }
+}
+
+function estimateTextWeight(text) {
+  const value = String(text || "")
+  let weight = 0
+  for (let i = 0; i < value.length; i += 1) {
+    weight += value.charCodeAt(i) > 127 ? 2 : 1
+  }
+  return weight
+}
+
+function estimateLines(text, lineWeightCapacity) {
+  return Math.max(1, Math.ceil(estimateTextWeight(text) / lineWeightCapacity))
+}
+
+function makeDetailRow(label, value) {
+  if (value === undefined || value === null || value === "") {
+    return null
+  }
+  const text = String(value)
+  const labelLines = estimateLines(label, 8)
+  const valueLines = estimateLines(text, 14)
+  const height = Math.max(40, labelLines * 18 + 12, valueLines * 19 + 12)
+  return {
+    label,
+    value: text,
+    itemStyle: "height: " + height + "px;",
+    labelStyle: "height: " + (height - 8) + "px;lines: " + labelLines + ";",
+    valueStyle: "height: " + (height - 8) + "px;lines: " + valueLines + ";"
+  }
+}
+
+export default {
+  private: {
+    screenWidth: 212,
+    screenHeight: 520,
+    screenShape: "pill",
+    topButtonLeft: 66,
+    topButtonWidth: 80,
+    titleLeft: 46,
+    titleWidth: 120,
+    scrollLeft: 0,
+    scrollTop: 106,
+    scrollWidth: 212,
+    scrollHeight: 308,
+    tableWidth: TABLE_IMAGE_WIDTH,
+    tableHeight: TABLE_IMAGE_HEIGHT,
+    tableContentWidth: TABLE_IMAGE_WIDTH,
+    tableContentHeight: TABLE_IMAGE_HEIGHT,
+    tablePaddingLeft: 106,
+    tablePaddingTop: 154,
+    tableScrollX: 106,
+    tableScrollY: 154,
+    focusLeft: 79,
+    focusTop: 233,
+    focusSize: 54,
+    focusActionLeft: 64,
+    focusActionTop: 424,
+    focusActionWidth: 84,
+    panelLeft: 12,
+    panelTop: 96,
+    panelWidth: 188,
+    panelHeight: 390,
+    panelListHeight: 284,
+    detailVisible: false,
+    selectedTitle: "",
+    selectedSubtitle: "",
+    selectedRows: []
+  },
+
+  onInit() {
+    this.dragStartX = null
+    this.dragStartY = null
+    this.dragStartScrollX = 0
+    this.dragStartScrollY = 0
+    applyResponsiveLayout(this, device, "pill")
+  },
+
+  onShow() {
+    this.resetScrollPosition()
+  },
+
+  applyScreenLayout(layout) {
+    this.screenWidth = layout.screenWidth
+    this.screenHeight = layout.screenHeight
+    this.screenShape = layout.shape
+    this.topButtonLeft = layout.topButtonLeft
+    this.topButtonWidth = layout.topButtonWidth
+    this.titleLeft = layout.titleLeft
+    this.titleWidth = layout.titleWidth
+    this.panelLeft = Math.floor((layout.screenWidth - layout.cardWidth) / 2)
+    this.panelTop = layout.shape === "pill" ? 96 : 84
+    this.panelWidth = layout.cardWidth
+    this.panelHeight = Math.max(300, layout.screenHeight - this.panelTop - 18)
+    this.panelListHeight = Math.max(196, this.panelHeight - 104)
+
+    if (layout.shape === "pill") {
+      this.scrollLeft = 0
+      this.scrollTop = Math.floor(layout.screenWidth / 2)
+      this.scrollWidth = layout.screenWidth
+      this.scrollHeight = Math.max(180, layout.screenHeight - layout.screenWidth)
+    } else {
+      const sideInset = layout.shape === "round" ? Math.floor(layout.screenWidth * 0.1) : 16
+      const verticalInset = layout.shape === "round" ? Math.floor(layout.screenHeight * 0.13) : 48
+      this.scrollLeft = sideInset
+      this.scrollTop = verticalInset
+      this.scrollWidth = Math.max(160, layout.screenWidth - sideInset * 2)
+      this.scrollHeight = Math.max(180, layout.screenHeight - verticalInset * 2)
+    }
+
+    const targetArea = this.scrollWidth * this.scrollHeight * VIEW_AREA_SCALE
+    this.tableWidth = Math.floor(Math.sqrt(targetArea * TABLE_ASPECT))
+    this.tableHeight = Math.floor(this.tableWidth / TABLE_ASPECT)
+    this.focusSize = Math.min(58, Math.max(46, Math.floor(this.scrollWidth * 0.25)))
+    this.focusLeft = Math.floor(this.scrollLeft + this.scrollWidth / 2 - this.focusSize / 2)
+    this.focusTop = Math.floor(this.scrollTop + this.scrollHeight / 2 - this.focusSize / 2)
+    this.focusActionWidth = Math.min(96, Math.max(78, Math.floor(layout.screenWidth * 0.42)))
+    this.focusActionLeft = Math.floor((layout.screenWidth - this.focusActionWidth) / 2)
+    this.focusActionTop = Math.min(layout.screenHeight - 54, this.scrollTop + this.scrollHeight + 10)
+    this.tablePaddingLeft = this.getFocusCenterX()
+    this.tablePaddingTop = this.getFocusCenterY()
+    this.tableContentWidth = this.tableWidth + layout.screenWidth
+    this.tableContentHeight = this.tableHeight + layout.screenHeight
+    this.resetScrollPosition()
+  },
+
+  resetScrollPosition() {
+    this.tableScrollX = this.tablePaddingLeft
+    this.tableScrollY = this.tablePaddingTop
+    setTimeout(() => {
+      const scroller = this.$element("periodicScroll")
+      if (scroller) {
+        scroller.scrollTo({
+          left: this.tablePaddingLeft,
+          top: this.tablePaddingTop
+        })
+      }
+    }, 0)
+  },
+
+  handleTableScroll(event) {
+    if (!event) {
+      return
+    }
+    if (typeof event.scrollX === "number") {
+      this.tableScrollX = event.scrollX
+    }
+    if (typeof event.scrollY === "number") {
+      this.tableScrollY = event.scrollY
+    }
+  },
+
+  handleTableTouchStart(eve) {
+    this.dragStartX = this.getPoint(eve, "x")
+    this.dragStartY = this.getPoint(eve, "y")
+    this.dragStartScrollX = this.tableScrollX
+    this.dragStartScrollY = this.tableScrollY
+  },
+
+  handleTableTouchMove(eve) {
+    const currentX = this.getPoint(eve, "x")
+    const currentY = this.getPoint(eve, "y")
+    if (this.dragStartX === null || this.dragStartY === null || currentX === null || currentY === null) {
+      return
+    }
+
+    const nextX = this.clamp(this.dragStartScrollX - (currentX - this.dragStartX), 0, this.tableWidth)
+    const nextY = this.clamp(this.dragStartScrollY - (currentY - this.dragStartY), 0, this.tableHeight)
+    this.scrollTableTo(nextX, nextY)
+  },
+
+  handleTableTouchEnd() {
+    this.dragStartX = null
+    this.dragStartY = null
+    this.dragStartScrollX = this.tableScrollX
+    this.dragStartScrollY = this.tableScrollY
+  },
+
+  scrollTableTo(left, top) {
+    this.tableScrollX = left
+    this.tableScrollY = top
+    const scroller = this.$element("periodicScroll")
+    if (scroller) {
+      scroller.scrollTo({
+        left,
+        top
+      })
+    }
+  },
+
+  showFocusedElement() {
+    const selected = this.getFocusedElement()
+    if (selected) {
+      this.showElementDetail(selected)
+    }
+  },
+
+  getFocusedElement() {
+    const imageX = this.tableScrollX + this.getFocusCenterX() - this.tablePaddingLeft
+    const imageY = this.tableScrollY + this.getFocusCenterY() - this.tablePaddingTop
+    return this.getElementAtImagePoint(imageX, imageY)
+  },
+
+  getElementAtImagePoint(imageX, imageY) {
+    if (imageX < 0 || imageY < 0 || imageX > this.tableWidth || imageY > this.tableHeight) {
+      return null
+    }
+
+    const colPitch = this.tableWidth / TABLE_COLUMNS
+    const rowPitch = this.tableHeight / TABLE_ROWS
+    const col = Math.floor(imageX / colPitch) + 1
+    const row = Math.floor(imageY / rowPitch) + 1
+    const gap = SOURCE_TILE_GAP * (this.tableWidth / TABLE_IMAGE_WIDTH)
+    const cellLeft = (col - 1) * colPitch + gap / 2
+    const cellTop = (row - 1) * rowPitch + gap / 2
+    const cellRight = col * colPitch - gap / 2
+    const cellBottom = row * rowPitch - gap / 2
+    if (imageX < cellLeft || imageX > cellRight || imageY < cellTop || imageY > cellBottom) {
+      return null
+    }
+
+    const parts = getCompactElementMap()[row + ":" + col]
+    return parts ? parseCompactElement(parts) : null
+  },
+
+  showElementDetail(element) {
+    const rows = [
+      makeDetailRow("元素符号", element.symbol),
+      makeDetailRow("名称", element.nameZh + " / " + element.nameEn),
+      makeDetailRow("原子序数 Z", element.atomicNumber),
+      makeDetailRow("相对原子质量", element.atomicMass),
+      makeDetailRow("周期", element.period),
+      makeDetailRow("族", element.group),
+      makeDetailRow("分区", element.block),
+      makeDetailRow("结构类别", element.family),
+      makeDetailRow("元素类型", element.category),
+      makeDetailRow("电子构型", element.electronConfig),
+      makeDetailRow("常见化合价", element.oxidationStates),
+      makeDetailRow("电负性", element.electronegativity),
+      makeDetailRow("原子半径", element.atomicRadius),
+      makeDetailRow("离子半径", element.ionRadius),
+      makeDetailRow("第一电离能", element.ionizationEnergy),
+      makeDetailRow("电子亲和能", element.electronAffinity),
+      makeDetailRow("常温物态", element.standardState),
+      makeDetailRow("天然存在", element.existence),
+      makeDetailRow("键合类型", element.bondingType),
+      makeDetailRow("熔点", element.meltingPoint),
+      makeDetailRow("沸点", element.boilingPoint),
+      makeDetailRow("密度", element.density),
+      makeDetailRow("发现年代", element.yearDiscovered)
+    ]
+    const visibleRows = []
+    for (let i = 0; i < rows.length; i += 1) {
+      if (rows[i]) {
+        visibleRows.push(rows[i])
+      }
+    }
+    this.selectedTitle = element.symbol + "  " + element.nameZh
+    this.selectedSubtitle = element.nameEn + " · Z=" + element.atomicNumber
+    this.selectedRows = visibleRows
+    this.detailVisible = true
+  },
+
+  closeElementPanel() {
+    this.detailVisible = false
+  },
+
+  getFocusCenterX() {
+    return this.focusLeft + this.focusSize / 2
+  },
+
+  getFocusCenterY() {
+    return this.focusTop + this.focusSize / 2
+  },
+
+  getPoint(eve, axis) {
+    if (!eve) {
+      return null
+    }
+    const point = (eve.touches && eve.touches[0]) || (eve.changedTouches && eve.changedTouches[0]) || eve
+    const candidates = axis === "x"
+      ? ["globalX", "screenX", "clientX", "pageX", "x"]
+      : ["globalY", "screenY", "clientY", "pageY", "y"]
+    for (let i = 0; i < candidates.length; i += 1) {
+      const key = candidates[i]
+      if (typeof point[key] === "number") {
+        return point[key]
+      }
+    }
+    return null
+  },
+
+  clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value))
+  },
+
+  goBack() {
+    router.back()
+  }
+}
+</script>
+
+<style>
+.periodic-page {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #cfe9df;
+}
+
+.periodic-back {
+  position: absolute;
+  top: 14px;
+  height: 44px;
+  color: #ffffff;
+  font-size: 20px;
+  line-height: 44px;
+  text-align: center;
+  font-weight: bold;
+  border-radius: 22px;
+  background-color: #1e9b6c;
+  border: 2px solid #157d58;
+}
+
+.periodic-title {
+  position: absolute;
+  top: 62px;
+  height: 34px;
+  color: #16231f;
+  font-size: 26px;
+  line-height: 34px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.periodic-scroll {
+  position: absolute;
+  background-color: rgba(255, 255, 255, 0);
+}
+
+.periodic-content {
+  position: absolute;
+}
+
+.periodic-image {
+  position: absolute;
+}
+
+.periodic-touch-layer {
+  position: absolute;
+  background-color: rgba(255, 255, 255, 0);
+}
+
+.focus-box {
+  position: absolute;
+  border-radius: 8px;
+  border: 2px solid #1e9b6c;
+  background-color: rgba(255, 255, 255, 0);
+}
+
+.focus-action {
+  position: absolute;
+  height: 40px;
+  border-radius: 20px;
+  background-color: #1e9b6c;
+  border: 2px solid #157d58;
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 40px;
+  text-align: center;
+  font-weight: bold;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+
+.element-panel {
+  position: absolute;
+  border-radius: 18px;
+  background-color: #f7fbf9;
+  border: 2px solid #9fc8b8;
+}
+
+.element-close {
+  position: absolute;
+  left: 132px;
+  top: 8px;
+  width: 44px;
+  height: 30px;
+  border-radius: 15px;
+  background-color: #1e9b6c;
+  color: #ffffff;
+  font-size: 15px;
+  line-height: 30px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.element-title {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: 112px;
+  height: 34px;
+  color: #14251f;
+  font-size: 28px;
+  line-height: 34px;
+  font-weight: bold;
+  lines: 1;
+  text-overflow: ellipsis;
+}
+
+.element-subtitle {
+  position: absolute;
+  left: 12px;
+  top: 48px;
+  width: 164px;
+  height: 36px;
+  color: #4f665d;
+  font-size: 16px;
+  line-height: 18px;
+  lines: 2;
+  text-overflow: ellipsis;
+}
+
+.element-info-list {
+  position: absolute;
+  left: 10px;
+  top: 92px;
+  width: 168px;
+}
+
+.element-info-item {
+  width: 168px;
+}
+
+.element-info-label {
+  position: absolute;
+  left: 0px;
+  top: 4px;
+  width: 58px;
+  color: #6a7b74;
+  font-size: 14px;
+  line-height: 18px;
+}
+
+.element-info-value {
+  position: absolute;
+  left: 62px;
+  top: 4px;
+  width: 104px;
+  color: #1b3029;
+  font-size: 15px;
+  line-height: 19px;
+}
+</style>
